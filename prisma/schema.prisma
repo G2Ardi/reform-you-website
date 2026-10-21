@@ -1,0 +1,429 @@
+// Reform You Pilates Studio, Datenmodell
+//
+// Alles haengt an Standort, weil ab 01.01.2027 zwei Standorte betrieben
+// werden (Wassenberg, Wegberg) und kein Kurs, Abo, Preis oder Event
+// standortuebergreifend gilt. Eine Ausnahme: Kunde und Karte haengen
+// bewusst NICHT an einem Standort, siehe Karte unten.
+//
+// Ziel ist eine Datenbasis, die spaeter sowohl die Website als auch eine
+// native Buchungsapp bedienen kann. Deshalb liegt der Datenzugriff in
+// src/lib/repositories, nicht verstreut in den Seiten, siehe README.
+//
+// provider steht auf "sqlite" fuer die lokale Testumgebung, weil auf dieser
+// Maschine kein Postgres laeuft (siehe README, Abschnitt "Lokale
+// Testumgebung"). Fuer den Produktivbetrieb MUSS das auf
+// provider = "postgresql" mit einer echten DATABASE_URL umgestellt werden,
+// das ist hier bewusst nur eine Abkuerzung fuer den lokalen Testlauf.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Ein Studio-Standort. Traegt Adresse, Kontakt und alle offenen Angaben,
+/// die Janina pro Standort noch liefern muss.
+model Standort {
+  id        String  @id @default(cuid())
+  /// URL-Baustein, z. B. "wassenberg" oder "wegberg"
+  slug      String  @unique
+  name      String
+  aktivSeit DateTime?
+
+  strasse String?
+  plz     String?
+  ort     String?
+  telefon String?
+  email   String?
+
+  oeffnungszeiten      String?
+  oeffnungszeitenOffen Boolean @default(true)
+
+  parkhinweis      String?
+  parkhinweisOffen Boolean @default(true)
+
+  gruppengroesse      String?
+  gruppengroesseOffen Boolean @default(true)
+
+  /// Sichtbarer Hinweis fuer Standorte ohne echte Inhalte, z. B.
+  /// "Kurse folgen" fuer Wegberg vor dem offiziellen Start.
+  hinweis String?
+
+  aktiv       Boolean @default(true)
+  reihenfolge Int     @default(0)
+
+  kurse       Kurs[]
+  events      Event[]
+  aboModelle  AboModell[]
+  preise      Preis[]
+  produkte    Produkt[]
+  kursTermine KursTermin[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("standorte")
+}
+
+/// Position eines Kursformats auf der Federskala. "ohneFeder" steht fuer
+/// Matten-Kurse wie Pilates x Mommy & Mini: bewusst ohne Position, keine
+/// Interpolation auf der Achse.
+enum SkalaArt {
+  POSITION
+  OHNE_FEDER
+}
+
+model Kurs {
+  id         String   @id @default(cuid())
+  standortId String
+  standort   Standort @relation(fields: [standortId], references: [id], onDelete: Cascade)
+
+  /// z. B. "reformer-basics", eindeutig je Standort
+  slug String
+
+  name         String
+  dauerMinuten Int?
+  beschreibung String
+
+  skalaArt      SkalaArt @default(POSITION)
+  /// 0 bis 100, nur gesetzt wenn skalaArt POSITION ist
+  skalaPosition Int?
+  /// Kurzes Label an der Achse, z. B. "einstieg", "fortgeschritten", "intensiv"
+  skalaLabel    String?
+
+  /// z. B. "kein Vorwissen noetig", "Grundlagen vorausgesetzt"
+  hinweis String?
+
+  /// Sichtbare Markierung fuer fehlende oder unbestaetigte Angaben zu
+  /// diesem Kurs, z. B. unbestaetigte Dauer. Erscheint ueber die
+  /// bestehende Flag-Komponente, zusaetzlich zur normalen Buchungsmoeglichkeit.
+  offenerHinweis String?
+
+  /// Preis einer Einzelstunde in Cent. Von Janina bestaetigt fuer alle vier
+  /// aktuellen Formate (siehe Fragenkatalog), deshalb hier nicht nullable.
+  preisEinzelCent Int
+
+  /// Ob eine 5er- oder 10er-Karte fuer dieses Kursformat eingeloest werden
+  /// darf. Laut Janina gilt das nur fuer die drei Reformer-Kurse, nicht fuer
+  /// Pilates x Mommy & Mini. Das ist eine Ableitung aus ihrer Formulierung
+  /// "Reformer Kurse", nicht zu hundert Prozent bestaetigt, siehe
+  /// karteGueltigOffen.
+  karteGueltig      Boolean @default(true)
+  karteGueltigOffen Boolean @default(false)
+
+  /// Standard-Kapazitaet fuer neu angelegte Kurstermine dieses Formats.
+  kapazitaetStandard Int     @default(6)
+  kapazitaetOffen    Boolean @default(false)
+
+  reihenfolge Int     @default(0)
+  aktiv       Boolean @default(true)
+
+  kursTermine KursTermin[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([standortId, slug])
+  @@map("kurse")
+}
+
+/// Ein Abo-Modell ist an ein Kursformat eines Standorts gekoppelt,
+/// z. B. "Abo fuer Reformer Pilates Anfaenger in Wassenberg".
+model AboModell {
+  id         String   @id @default(cuid())
+  standortId String
+  standort   Standort @relation(fields: [standortId], references: [id], onDelete: Cascade)
+
+  name         String
+  beschreibung String
+  reihenfolge  Int     @default(0)
+  aktiv        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("abo_modelle")
+}
+
+enum PreisTyp {
+  ABO
+  EINZELSTUNDE
+  GESCHENKKARTE
+  /// 5er-/10er-Guthabenkarte, zur Unterscheidung vom Wertgutschein
+  /// (GESCHENKKARTE), siehe Fragenkatalog Antworten, Abschnitt 5.
+  KARTE
+  EVENT
+}
+
+/// Einzelner Preispunkt. betragCent bleibt null, solange die Konditionen
+/// nicht feststehen, offen bleibt dann true und die Seite zeigt eine
+/// sichtbare Markierung statt eines erfundenen Betrags.
+model Preis {
+  id         String   @id @default(cuid())
+  standortId String
+  standort   Standort @relation(fields: [standortId], references: [id], onDelete: Cascade)
+
+  typ         PreisTyp
+  bezeichnung String
+  betragCent  Int?
+  einheit     String?
+  hinweis     String?
+  offen       Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("preise")
+}
+
+model Event {
+  id         String   @id @default(cuid())
+  standortId String
+  standort   Standort @relation(fields: [standortId], references: [id], onDelete: Cascade)
+
+  slug         String
+  titel        String
+  beschreibung String
+
+  /// null, solange der naechste Termin noch nicht angekuendigt ist
+  datum     DateTime?
+  startzeit String?
+  endzeit   String?
+  ort       String?
+  preisCent Int?
+
+  wiederkehrend  Boolean @default(true)
+  offenerHinweis String?
+
+  reihenfolge Int     @default(0)
+  aktiv       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([standortId, slug])
+  @@map("events")
+}
+
+enum ProduktTyp {
+  ABO
+  EINZELSTUNDE
+  GESCHENKKARTE
+}
+
+/// Verkaufbares Produkt fuer den vorbereiteten Shop. Zahlungsanbieter ist
+/// absichtlich nicht fest verdrahtet: externeProduktId haelt spaeter z. B.
+/// eine Stripe Price ID, bleibt bis dahin null.
+model Produkt {
+  id         String   @id @default(cuid())
+  standortId String
+  standort   Standort @relation(fields: [standortId], references: [id], onDelete: Cascade)
+
+  typ          ProduktTyp
+  name         String
+  beschreibung String?
+  preisCent    Int?
+  aktiv        Boolean @default(true)
+
+  externerAnbieter String?
+  externeProduktId String?
+
+  bestellungen Bestellung[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("produkte")
+}
+
+enum BestellStatus {
+  OFFEN
+  BEZAHLT
+  STORNIERT
+}
+
+/// Platzhalter fuer den spaeteren Bestellvorgang. Heute nur vorbereitet,
+/// damit die API-Schicht schon die Form hat, die ein Zahlungsanbieter wie
+/// Stripe spaeter befuellt.
+model Bestellung {
+  id        String  @id @default(cuid())
+  produktId String
+  produkt   Produkt @relation(fields: [produktId], references: [id])
+
+  kundeEmail String
+  kundeName  String?
+  betragCent Int?
+  status     BestellStatus @default(OFFEN)
+
+  zahlungsanbieter  String?
+  externeZahlungsId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bestellungen")
+}
+
+// ============================================================
+// Buchungssystem: Kundenkonten, Termine, Buchungen, Guthabenkarten
+// ============================================================
+
+/// Kundenkonto. Buchung ist ausschliesslich mit Konto moeglich, kein
+/// Gast-Checkout (siehe Auftrag). Mindestalter 16 Jahre wird bei der
+/// Registrierung per Pflicht-Checkbox bestaetigt, dafuer braucht es kein
+/// eigenes Geburtsdatumsfeld.
+model Kunde {
+  id           String  @id @default(cuid())
+  name         String
+  email        String  @unique
+  passwortHash String
+  telefon      String
+  strasse      String
+  plz          String
+  ort          String
+
+  agbAkzeptiertAm DateTime
+
+  sessions  Session[]
+  buchungen Buchung[]
+  karten    Karte[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("kunden")
+}
+
+/// Einfache Cookie-Session ohne externe Auth-Library: ein zufaelliges Token
+/// im Cookie, serverseitig gegen diese Tabelle geprueft.
+model Session {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  kundeId     String
+  kunde       Kunde    @relation(fields: [kundeId], references: [id], onDelete: Cascade)
+  ablaufDatum DateTime
+
+  createdAt DateTime @default(now())
+
+  @@map("sessions")
+}
+
+enum KursTerminStatus {
+  AKTIV
+  AUSGEFALLEN
+}
+
+/// Ein konkreter, buchbarer Termin eines Kursformats an einem Standort.
+model KursTermin {
+  id         String   @id @default(cuid())
+  kursId     String
+  kurs       Kurs     @relation(fields: [kursId], references: [id], onDelete: Cascade)
+  standortId String
+  standort   Standort @relation(fields: [standortId], references: [id], onDelete: Cascade)
+
+  beginn DateTime
+  ende   DateTime
+
+  kapazitaet Int
+  status     KursTerminStatus @default(AKTIV)
+
+  /// Freitext, kein eigenes Trainer-Modell: fuer diesen Auftrag nicht
+  /// gefordert (siehe Fragenkatalog, Abschnitt Trainer).
+  trainerName String?
+
+  ausgefallenAm DateTime?
+
+  buchungen Buchung[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("kurstermine")
+}
+
+enum BuchungStatus {
+  GEBUCHT
+  WARTELISTE
+  STORNIERT
+  NO_SHOW
+}
+
+enum ZahlungsArt {
+  KARTE
+  EINZELZAHLUNG
+}
+
+model Buchung {
+  id           String     @id @default(cuid())
+  kundeId      String
+  kunde        Kunde      @relation(fields: [kundeId], references: [id], onDelete: Cascade)
+  kursTerminId String
+  kursTermin   KursTermin @relation(fields: [kursTerminId], references: [id], onDelete: Cascade)
+
+  status      BuchungStatus @default(GEBUCHT)
+  zahlungsart ZahlungsArt
+
+  karteId String?
+  karte   Karte?  @relation(fields: [karteId], references: [id])
+
+  /// Nur gesetzt, wenn status WARTELISTE ist: Reihenfolge auf der Liste.
+  wartelistePosition Int?
+  /// Gesetzt, sobald die Person benachrichtigt wurde, dass ein Platz frei
+  /// ist. Ab diesem Zeitpunkt laeuft die 30-Minuten-Reaktionsfrist.
+  warteBenachrichtigtAm DateTime?
+  warteFristBisAm       DateTime?
+
+  erinnertAm   DateTime?
+  storniertAm  DateTime?
+  stornoGrund  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("buchungen")
+}
+
+enum KartenTyp {
+  FUENFER
+  ZEHNER
+  /// Guthabenkarte aus einer Erstattung (Einzelbuchung storniert) oder aus
+  /// einer manuellen Kulanz-Gutschrift durch die Inhaberin. Kein
+  /// gekauftes Produkt, deshalb ohne Festpreis.
+  GUTHABEN
+}
+
+/// Guthabenkarte. Haengt bewusst NICHT an einem Standort: sie gehoert dem
+/// Kunden und muss an beiden Standorten einlösbar sein (ausdrueckliche
+/// Vorgabe, siehe Auftrag). Nicht uebertragbar, verfaellt ersatzlos nach
+/// Ablauf von gueltigBis, keine Pausierung vorgesehen (nicht bestaetigt).
+model Karte {
+  id              String    @id @default(cuid())
+  kundeId         String
+  kunde           Kunde     @relation(fields: [kundeId], references: [id], onDelete: Cascade)
+  typ             KartenTyp
+  einheitenGesamt Int
+  einheitenRest   Int
+  gekauftAm       DateTime  @default(now())
+  gueltigBis      DateTime
+  notiz           String?
+
+  buchungen Buchung[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("karten")
+}
+
+/// Singleton-Einstellungen, im Admin-Bereich aenderbar statt hart codiert.
+model Einstellung {
+  id                      Int      @id @default(1)
+  erinnerungStundenVorher Int      @default(36)
+  stornoFristStunden      Int      @default(24)
+  updatedAt               DateTime @updatedAt
+
+  @@map("einstellungen")
+}
