@@ -385,6 +385,31 @@ a:hover { color: var(--espresso); }
 .hero-btns { margin-top: var(--s4); }
 .hero-flag { position: absolute; right: var(--gut); bottom: var(--s2); z-index: 5; }
 
+/* Landing-Moment je Standort: Wortmarke plus ein Weg, direkt zu buchen.
+   Alles Weitere (Erklaerung, Skala, Preise) folgt erst beim Scrollen. */
+.hero-mark { display: block; }
+.hero-mark-word {
+  display: block;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(2.75rem, 2.1rem + 4.5vw, 5.5rem);
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+  color: var(--chalk);
+}
+.hero-mark-sub {
+  display: block;
+  font-family: var(--sans);
+  font-variation-settings: "wdth" 125, "wght" 500;
+  font-size: clamp(0.75rem, 0.65rem + 0.3vw, 0.9375rem);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  margin-top: 0.6em;
+  padding-left: 0.15em;
+  color: var(--chalk);
+  opacity: 0.88;
+}
+
 /* ================================================ Federskala
    Signatur der Seite. Ein Reformer ist ein Wagen auf Schienen,
    dessen Widerstand ueber Federn eingestellt wird. Statt gleicher
@@ -702,7 +727,7 @@ a:hover { color: var(--espresso); }
 .foot-end li { margin: 0; font-size: 0.8125rem; }
 
 /* Lange Komposita duerfen brechen, sonst reisst 320 Pixel */
-.t-1, .t-2, .t-3, .scale-name, .mark-word, .picker-name {
+.t-1, .t-2, .t-3, .scale-name, .mark-word, .picker-name, .hero-mark-word {
   overflow-wrap: break-word;
   hyphens: auto;
 }

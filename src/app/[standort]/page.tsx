@@ -32,26 +32,15 @@ export default async function StartPage({
         <section className="hero">
           <HeroImage src="/bilder/hero.jpg" alt={`Blick in das Studio von Reform You in ${ort}`} />
           <div className="shell hero-body">
-            <p className="tag" style={{ color: "var(--chalk)" }}>
-              Reformer Pilates · {ort}
-            </p>
-            <h1 className="t-1 hero-title">
-              fünfzig minuten, in denen dich niemand braucht.
-            </h1>
-            <p className="hero-sub">
-              Kleine Gruppen am Reformer. Das Gerät wird auf dich eingestellt,
-              nicht du auf das Gerät.
+            <p className="hero-mark" aria-hidden="true">
+              <span className="hero-mark-word">reform you</span>
+              <span className="hero-mark-sub">Pilates Studio</span>
             </p>
             <div className="btns hero-btns">
               {hatKurse ? (
-                <>
-                  <a className="btn" href={`/${standort.slug}/buchen`}>
-                    Termin buchen
-                  </a>
-                  <a className="btn btn-line" href="#skala">
-                    Kurse ansehen
-                  </a>
-                </>
+                <a className="btn" href={`/${standort.slug}/buchen`}>
+                  Kurs buchen
+                </a>
               ) : (
                 <a className="btn btn-line" href={`/${standort.slug}/kontakt`}>
                   Kontakt aufnehmen
@@ -59,9 +48,35 @@ export default async function StartPage({
               )}
             </div>
           </div>
-          <p className="hero-flag">
-            <Flag>Foto fehlt: Hero, Reformer im Studio, Querformat, mind. 2000px breit</Flag>
-          </p>
+        </section>
+
+        <section className="band band-tight">
+          <div className="shell">
+            <Reveal>
+              <div className="stack-3">
+                <p className="tag">Reformer Pilates · {ort}</p>
+                <h1 className="t-1 hero-title" style={{ color: "inherit" }}>
+                  fünfzig minuten, in denen dich niemand braucht.
+                </h1>
+                <p className="lede" style={{ maxWidth: "40ch" }}>
+                  Kleine Gruppen am Reformer. Das Gerät wird auf dich
+                  eingestellt, nicht du auf das Gerät.
+                </p>
+              </div>
+            </Reveal>
+            {hatKurse ? (
+              <Reveal delay={0.08}>
+                <div className="btns" style={{ marginTop: "var(--s4)" }}>
+                  <a className="btn" href={`/${standort.slug}/buchen`}>
+                    Termin buchen
+                  </a>
+                  <a className="btn btn-line" href="#skala">
+                    Kurse ansehen
+                  </a>
+                </div>
+              </Reveal>
+            ) : null}
+          </div>
         </section>
 
         {standort.hinweis ? (
