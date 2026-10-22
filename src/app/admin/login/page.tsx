@@ -12,7 +12,7 @@ export default async function AdminLoginPage() {
 
   return (
     <>
-      <Header standort={null} />
+      <Header standort={null} solid />
       <main id="inhalt">
         <section className="band band-tight">
           <div className="shell">

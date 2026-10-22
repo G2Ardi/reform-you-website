@@ -24,7 +24,7 @@ export default async function AktionPage({
   if (!nutzlast) {
     return (
       <>
-        <Header standort={null} />
+        <Header standort={null} solid />
         <main id="inhalt">
           <section className="band">
             <div className="shell">
@@ -42,7 +42,7 @@ export default async function AktionPage({
   if (!buchung) {
     return (
       <>
-        <Header standort={null} />
+        <Header standort={null} solid />
         <main id="inhalt">
           <section className="band">
             <div className="shell">
@@ -66,7 +66,7 @@ export default async function AktionPage({
 
   return (
     <>
-      <Header standort={null} />
+      <Header standort={null} solid />
       <main id="inhalt">
         <section className="band band-tight">
           <div className="shell">

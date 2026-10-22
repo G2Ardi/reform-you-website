@@ -257,16 +257,15 @@ a:hover { color: var(--espresso); }
   gap: var(--s3);
 }
 
-/* Wortmarke: gemein, Didone, mit dem gesperrten Zusatz darunter */
+/* Wortmarke: echtes Logo-Foto, freigestellt. Zwei Einfaerbungen als
+   Datei (dark/light), je nachdem ob der Kopfbereich auf heller Flaeche
+   oder ueber einem dunklen Hero-Foto liegt. */
 .mark { text-decoration: none; color: inherit; display: block; line-height: 1; }
 .mark:hover { color: inherit; }
-.mark-word {
+.mark-logo {
   display: block;
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: 1.75rem;
-  letter-spacing: -0.02em;
-  text-transform: lowercase;
+  height: clamp(2.1rem, 1.85rem + 1vw, 2.65rem);
+  width: auto;
 }
 .mark-sub {
   display: block;
@@ -385,29 +384,12 @@ a:hover { color: var(--espresso); }
 .hero-btns { margin-top: var(--s4); }
 .hero-flag { position: absolute; right: var(--gut); bottom: var(--s2); z-index: 5; }
 
-/* Landing-Moment je Standort: Wortmarke plus ein Weg, direkt zu buchen.
+/* Landing-Moment je Standort: Logo plus ein Weg, direkt zu buchen.
    Alles Weitere (Erklaerung, Skala, Preise) folgt erst beim Scrollen. */
 .hero-mark { display: block; }
-.hero-mark-word {
-  display: block;
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: clamp(2.75rem, 2.1rem + 4.5vw, 5.5rem);
-  letter-spacing: -0.02em;
-  text-transform: lowercase;
-  color: var(--chalk);
-}
-.hero-mark-sub {
-  display: block;
-  font-family: var(--sans);
-  font-variation-settings: "wdth" 125, "wght" 500;
-  font-size: clamp(0.75rem, 0.65rem + 0.3vw, 0.9375rem);
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  margin-top: 0.6em;
-  padding-left: 0.15em;
-  color: var(--chalk);
-  opacity: 0.88;
+.hero-mark-logo {
+  height: clamp(3.5rem, 2.6rem + 6vw, 7rem);
+  width: auto;
 }
 
 /* ================================================ Federskala
@@ -727,7 +709,7 @@ a:hover { color: var(--espresso); }
 .foot-end li { margin: 0; font-size: 0.8125rem; }
 
 /* Lange Komposita duerfen brechen, sonst reisst 320 Pixel */
-.t-1, .t-2, .t-3, .scale-name, .mark-word, .picker-name, .hero-mark-word {
+.t-1, .t-2, .t-3, .scale-name, .picker-name {
   overflow-wrap: break-word;
   hyphens: auto;
 }

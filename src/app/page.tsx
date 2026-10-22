@@ -28,7 +28,7 @@ export default async function StandortauswahlPage({
 
   return (
     <>
-      <Header standort={null} />
+      <Header standort={null} solid />
       <main id="inhalt" className="picker-page">
         <div className="shell">
           <Reveal className="picker-intro">

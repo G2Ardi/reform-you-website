@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -57,8 +58,14 @@ export default function Header({ standort = null, solid = false, bookingUrl }: H
           href={home}
           aria-label="Reform You Pilates Studio, zur Startseite"
         >
-          <span className="mark-word">reform you</span>
-          <span className="mark-sub">Pilates Studio</span>
+          <Image
+            src={solid ? "/logo/reformyou-logo-dark.png" : "/logo/reformyou-logo-light.png"}
+            alt=""
+            width={888}
+            height={510}
+            priority
+            className="mark-logo"
+          />
         </Link>
 
         {standort ? (

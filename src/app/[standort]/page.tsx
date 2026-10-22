@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
 import HeroImage from "@/components/HeroImage";
@@ -32,9 +33,15 @@ export default async function StartPage({
         <section className="hero">
           <HeroImage src="/bilder/hero.jpg" alt={`Blick in das Studio von Reform You in ${ort}`} />
           <div className="shell hero-body">
-            <p className="hero-mark" aria-hidden="true">
-              <span className="hero-mark-word">reform you</span>
-              <span className="hero-mark-sub">Pilates Studio</span>
+            <p className="hero-mark">
+              <Image
+                src="/logo/reformyou-logo-light.png"
+                alt="Reform You Pilates Studio"
+                width={888}
+                height={510}
+                priority
+                className="hero-mark-logo"
+              />
             </p>
             <div className="btns hero-btns">
               {hatKurse ? (

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { istAdminEingeloggt } from "@/lib/auth/admin";
 import { adminLogoutAction } from "@/lib/actions/admin";
@@ -12,8 +13,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
       <header className="head head-solid">
         <div className="shell head-in">
-          <Link className="mark" href="/admin">
-            <span className="mark-word">reform you</span>
+          <Link className="mark" href="/admin" aria-label="Reform You, zur Terminübersicht">
+            <Image
+              src="/logo/reformyou-logo-dark.png"
+              alt=""
+              width={888}
+              height={510}
+              className="mark-logo"
+            />
             <span className="mark-sub">Admin</span>
           </Link>
           <nav className="nav" style={{ display: "flex" }}>
