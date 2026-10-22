@@ -291,14 +291,25 @@ a:hover { color: var(--espresso); }
 .nav a:hover { border-bottom-color: currentColor; color: inherit; }
 .nav a[aria-current="page"] { border-bottom-color: currentColor; }
 
-.nav .nav-switch {
-  font-variation-settings: "wdth" 112, "wght" 500;
+/* Immer sichtbare Standortwahl, direkt in der Kopfzeile, nicht im
+   Burger-Menue versteckt. Eigene Zeile unter Logo/Nav, auf jeder Breite. */
+.head-quickbar { margin-top: var(--s2); }
+.head-quickbar-link {
+  display: inline-flex; align-items: center; gap: 0.45em;
+  min-height: 44px;
+  font-family: var(--sans);
+  font-variation-settings: "wdth" 118, "wght" 500;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
-  opacity: 0.78;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.82;
   border-bottom: 1px dotted currentColor;
 }
-.nav .nav-switch:hover { opacity: 1; border-bottom-style: solid; }
+.head-quickbar-link:hover { opacity: 1; border-bottom-style: solid; }
+.head-quickbar-label { text-transform: uppercase; opacity: 0.75; }
+.head-quickbar-name { font-variation-settings: "wdth" 118, "wght" 650; }
+.head-quickbar-arrow { text-transform: uppercase; opacity: 0.7; }
 
 /* Eigene Regel mit Elternselektor, damit sie .nav a sicher schlaegt. */
 .nav .nav-cta {
@@ -334,7 +345,7 @@ a:hover { color: var(--espresso); }
     display: none;
   }
   .nav[data-open="true"] { display: flex; }
-  .nav a, .nav .nav-switch { padding: 0.85rem 0.4rem; border-bottom: 1px solid var(--taupe); }
+  .nav a { padding: 0.85rem 0.4rem; border-bottom: 1px solid var(--taupe); }
   .nav a:nth-last-child(2) { border-bottom: none; }
   .nav .nav-cta { margin-top: var(--s2); justify-content: center; border-color: var(--espresso); }
   .nav .nav-cta:hover { background: var(--espresso); color: var(--chalk); border-color: var(--espresso); }
@@ -794,3 +805,119 @@ textarea.input {
 .pill-ok { color: #3C6B3A; }
 .pill-warn { color: #8A5A00; }
 .pill-off { color: var(--sepia); }
+
+/* ----------------------------------------- Kursplan, Wochenkalender */
+.btn-klein {
+  min-height: 38px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.kalender-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--s4);
+}
+
+.kalender-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.kalender-pfeil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: var(--paper);
+  border: 1px solid var(--taupe);
+  border-radius: 999px;
+  color: var(--espresso);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.kalender-pfeil:hover:not(:disabled) { background: var(--paper-2); border-color: var(--bronze); }
+.kalender-pfeil:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.kalender-woche {
+  font-family: var(--sans);
+  font-variation-settings: "wdth" 110, "wght" 600;
+  font-size: 0.9375rem;
+  min-width: 13ch;
+  text-align: center;
+}
+
+.kalender-heute { white-space: nowrap; }
+
+.kalender-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.kalender-filter .input { width: auto; min-width: 9rem; }
+.kalender-filter input[type="search"] { min-width: 12rem; }
+
+.kalender-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--s2);
+  align-items: start;
+  overflow-x: auto;
+}
+
+@media (max-width: 860px) {
+  .kalender-grid { grid-template-columns: 1fr; }
+  .kalender-tag + .kalender-tag { border-top: 1px solid var(--taupe); padding-top: var(--s3); margin-top: var(--s1); }
+}
+
+.kalender-tag {
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.kalender-tag-kopf {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+  padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--taupe);
+}
+.kalender-tag-name {
+  font-family: var(--sans);
+  font-variation-settings: "wdth" 125, "wght" 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sepia);
+}
+.kalender-tag-nummer {
+  font-family: var(--display);
+  font-size: 1.1rem;
+}
+
+.kalender-karten { display: grid; gap: var(--s2); }
+.kalender-leer { padding: 0.3em 0; }
+
+.kurs-karte {
+  border: 1px solid var(--taupe);
+  border-radius: 3px;
+  padding: var(--s2);
+  background: var(--paper-2);
+  display: grid;
+  gap: 0.35em;
+}
+.kurs-karte-titel { margin: 0; }
+.kurs-karte-zeit { margin: 0; color: var(--espresso); }
+.kurs-karte-niveau { justify-self: start; }
+.kurs-karte-trainer, .kurs-karte-plaetze { margin: 0; }
+.kurs-karte-status { margin: 0; color: var(--sepia); font-style: italic; }
+.kurs-karte-formular { display: grid; gap: 0.5em; }
+.kurs-karte-formular .form { gap: 0.6em; }

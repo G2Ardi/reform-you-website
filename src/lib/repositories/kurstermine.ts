@@ -29,6 +29,28 @@ export async function getTerminMitBuchungen(id: string) {
   });
 }
 
+/** Fuer den Wochenkalender im Buchungsbereich: alle Termine eines Standorts
+ * in einem Zeitfenster um heute, nicht nur zukuenftige. So lassen sich auch
+ * bereits vergangene Tage der aktuellen Woche anzeigen (als "vergangen"
+ * markiert), ohne jede Woche einzeln aus der Datenbank zu laden. */
+export async function getTermineImFensterFuerStandort(
+  standortSlug: string,
+  wochenZurueck = 8,
+  wochenVoraus = 16,
+) {
+  const heute = new Date();
+  const von = new Date(heute.getTime() - wochenZurueck * 7 * 24 * 60 * 60_000);
+  const bis = new Date(heute.getTime() + wochenVoraus * 7 * 24 * 60 * 60_000);
+  return prisma.kursTermin.findMany({
+    where: {
+      standort: { slug: standortSlug },
+      beginn: { gte: von, lte: bis },
+    },
+    include: MIT_BEZUG,
+    orderBy: { beginn: "asc" },
+  });
+}
+
 export async function getAlleKommendenTermine() {
   return prisma.kursTermin.findMany({
     where: { beginn: { gte: new Date() } },

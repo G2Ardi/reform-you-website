@@ -95,9 +95,6 @@ export default function Header({ standort = null, solid = false, bookingUrl }: H
                   {l.label}
                 </Link>
               ))}
-              <Link href="/?wahl=1" className="nav-switch">
-                Standort: {standort.name}, wechseln
-              </Link>
               <Link href={`/${standort.slug}/konto/profil`}>Mein Konto</Link>
               <Link className="nav-cta" href={effektiveBookingUrl}>
                 Termin buchen
@@ -106,6 +103,18 @@ export default function Header({ standort = null, solid = false, bookingUrl }: H
           </>
         ) : null}
       </div>
+
+      {standort ? (
+        /* Immer sichtbare Standortwahl direkt in der Kopfzeile, nicht hinter
+           dem Burger-Menü versteckt, das war auf dem Handy zu unintuitiv. */
+        <div className="shell head-quickbar">
+          <Link href="/?wahl=1" className="head-quickbar-link">
+            <span className="head-quickbar-label">Standort</span>
+            <span className="head-quickbar-name">{standort.name}</span>
+            <span className="head-quickbar-arrow" aria-hidden="true">wechseln ›</span>
+          </Link>
+        </div>
+      ) : null}
     </header>
   );
 }
