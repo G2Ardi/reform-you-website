@@ -9,18 +9,17 @@
 // native Buchungsapp bedienen kann. Deshalb liegt der Datenzugriff in
 // src/lib/repositories, nicht verstreut in den Seiten, siehe README.
 //
-// provider steht auf "sqlite" fuer die lokale Testumgebung, weil auf dieser
-// Maschine kein Postgres laeuft (siehe README, Abschnitt "Lokale
-// Testumgebung"). Fuer den Produktivbetrieb MUSS das auf
-// provider = "postgresql" mit einer echten DATABASE_URL umgestellt werden,
-// das ist hier bewusst nur eine Abkuerzung fuer den lokalen Testlauf.
+// provider steht auf "postgresql": seit der Testdeployment auf Vercel mit
+// einer echten Prisma-Postgres-Datenbank (Region Frankfurt) laeuft, gibt es
+// keinen Grund mehr fuer die SQLite-Abkuerzung. DATABASE_URL zeigt jetzt auf
+// diese echte Datenbank, lokal wie auf Vercel, siehe README.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
