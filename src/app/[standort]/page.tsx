@@ -12,6 +12,15 @@ import { formatDatumLang } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
+/** Bilder, die sich je Standort unterscheiden. Fehlt ein Standort hier,
+ * greift die Wassenberg-Variante als Fallback, bis eigene Fotos da sind. */
+const HERO_BILD: Record<string, string> = {
+  wegberg: "/bilder/hero-wegberg.jpg",
+};
+const STUDIORAUM_BILD: Record<string, string> = {
+  wegberg: "/bilder/studioraum-wegberg.jpg",
+};
+
 export default async function StartPage({
   params,
 }: {
@@ -31,7 +40,10 @@ export default async function StartPage({
       <Header standort={{ slug: standort.slug, name: standort.name }} />
       <main id="inhalt">
         <section className="hero">
-          <HeroImage src="/bilder/hero.jpg" alt={`Blick in das Studio von Reform You in ${ort}`} />
+          <HeroImage
+            src={HERO_BILD[standort.slug] ?? "/bilder/hero.jpg"}
+            alt={`Blick in das Studio von Reform You in ${ort}`}
+          />
           <div className="shell hero-body">
             <p className="hero-mark">
               <Image
@@ -259,7 +271,7 @@ export default async function StartPage({
                   <FigurePlaceholder
                     ratio="1610"
                     hint="Studioraum · Querformat 16:10"
-                    src="/bilder/studioraum.jpg"
+                    src={STUDIORAUM_BILD[standort.slug] ?? "/bilder/studioraum.jpg"}
                     alt="Studioraum, Platzhalterfoto"
                   />
                 </div>

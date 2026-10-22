@@ -11,8 +11,7 @@ interface PickerStandort {
   hinweis: string | null;
 }
 
-/** Platzhalterfotos je Standort, siehe public/bilder. Sobald echte Fotos von
- * Janina kommen, hier nur den Pfad austauschen. */
+/** Echte Fotos je Standort, siehe public/bilder. */
 const STANDORT_BILD: Record<string, string> = {
   wassenberg: "/bilder/standort-wassenberg.jpg",
   wegberg: "/bilder/standort-wegberg.jpg",
