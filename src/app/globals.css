@@ -805,6 +805,7 @@ textarea.input {
 .pill-ok { color: #3C6B3A; }
 .pill-warn { color: #8A5A00; }
 .pill-off { color: var(--sepia); }
+.pill-standort { color: var(--bronze); border-color: var(--bronze); }
 
 /* ----------------------------------------- Kursplan, Wochenkalender */
 .btn-klein {
@@ -855,6 +856,34 @@ textarea.input {
 }
 
 .kalender-heute { white-space: nowrap; }
+
+.kalender-standorte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  margin-bottom: var(--s3);
+}
+
+.pill-filter {
+  font-family: var(--sans);
+  font-variation-settings: "wdth" 112, "wght" 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--taupe);
+  background: var(--paper);
+  color: var(--espresso);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.pill-filter:hover { border-color: var(--bronze); }
+.pill-filter-aktiv {
+  background: var(--espresso);
+  border-color: var(--espresso);
+  color: var(--chalk);
+}
 
 .kalender-filter {
   display: flex;
@@ -916,7 +945,7 @@ textarea.input {
 }
 .kurs-karte-titel { margin: 0; }
 .kurs-karte-zeit { margin: 0; color: var(--espresso); }
-.kurs-karte-niveau { justify-self: start; }
+.kurs-karte-standort, .kurs-karte-niveau { justify-self: start; }
 .kurs-karte-trainer, .kurs-karte-plaetze { margin: 0; }
 .kurs-karte-status { margin: 0; color: var(--sepia); font-style: italic; }
 .kurs-karte-formular { display: grid; gap: 0.5em; }

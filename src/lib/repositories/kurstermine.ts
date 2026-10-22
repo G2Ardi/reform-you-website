@@ -51,6 +51,22 @@ export async function getTermineImFensterFuerStandort(
   });
 }
 
+/** Wie getTermineImFensterFuerStandort, aber ueber alle Standorte hinweg.
+ * Fuer die Buchungsseite, die Termine standortuebergreifend anzeigt und
+ * dort filterbar macht. */
+export async function getTermineImFenster(wochenZurueck = 8, wochenVoraus = 16) {
+  const heute = new Date();
+  const von = new Date(heute.getTime() - wochenZurueck * 7 * 24 * 60 * 60_000);
+  const bis = new Date(heute.getTime() + wochenVoraus * 7 * 24 * 60 * 60_000);
+  return prisma.kursTermin.findMany({
+    where: {
+      beginn: { gte: von, lte: bis },
+    },
+    include: MIT_BEZUG,
+    orderBy: { beginn: "asc" },
+  });
+}
+
 export async function getAlleKommendenTermine() {
   return prisma.kursTermin.findMany({
     where: { beginn: { gte: new Date() } },

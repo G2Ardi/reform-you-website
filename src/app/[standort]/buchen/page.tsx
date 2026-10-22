@@ -3,8 +3,8 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Reveal from "@/components/Reveal";
 import Kursplan, { type KursplanTermin } from "@/components/Kursplan";
-import { getStandortBySlug } from "@/lib/repositories/standorte";
-import { getTermineImFensterFuerStandort, freiePlaetze } from "@/lib/repositories/kurstermine";
+import { getStandortBySlug, getAlleStandorte } from "@/lib/repositories/standorte";
+import { getTermineImFenster, freiePlaetze } from "@/lib/repositories/kurstermine";
 import { pruefeWartelisteAblauf } from "@/lib/repositories/buchungen";
 import { getEingeloggterKunde } from "@/lib/auth/session";
 import { getAktiveKartenFuerKunde } from "@/lib/repositories/karten";
@@ -23,14 +23,25 @@ export default async function BuchenPage({
   if (!standort) notFound();
 
   const kunde = await getEingeloggterKunde();
-  const termine = await getTermineImFensterFuerStandort(standort.slug);
+  const termine = await getTermineImFenster();
 
   // Lazy Ablaufpruefung der Warteliste statt echtem Cronjob, siehe
-  // src/lib/repositories/buchungen.ts. Nur fuer kommende Termine relevant.
-  await Promise.all(
-    termine.filter((t) => t.beginn >= new Date()).map((t) => pruefeWartelisteAblauf(t.id)),
+  // src/lib/repositories/buchungen.ts. Nur fuer kommende Termine mit
+  // tatsaechlich benachrichtigter Warteliste noetig, nicht fuer jeden
+  // Termin im Fenster. Nacheinander statt parallel, da die Datenbank hier
+  // nur sehr wenige gleichzeitige Verbindungen zulaesst (direkte
+  // Migrations-Verbindung, siehe .env) und das jetzt standortuebergreifend
+  // mehr Termine gleichzeitig betrifft als zuvor.
+  const terminePruefenNoetig = termine.filter(
+    (t) =>
+      t.beginn >= new Date() &&
+      t.buchungen.some((b) => b.status === "WARTELISTE" && b.warteBenachrichtigtAm),
   );
-  const frischeTermine = await getTermineImFensterFuerStandort(standort.slug);
+  for (const t of terminePruefenNoetig) {
+    await pruefeWartelisteAblauf(t.id);
+  }
+  const frischeTermine = terminePruefenNoetig.length > 0 ? await getTermineImFenster() : termine;
+  const alleStandorte = await getAlleStandorte();
 
   const aktiveKarten = kunde ? await getAktiveKartenFuerKunde(kunde.id) : [];
 
@@ -54,12 +65,16 @@ export default async function BuchenPage({
       skalaLabel: termin.kurs.skalaLabel,
       karteGueltig: termin.kurs.karteGueltig,
       preisLabel: formatPreis(termin.kurs.preisEinzelCent),
+      standortSlug: termin.standort.slug,
+      standortName: termin.standort.name,
       nutzbareKarten: nutzbareKarten.map((k) => ({
         id: k.id,
         label: `${k.typ === "GUTHABEN" ? "Guthaben" : k.typ === "FUENFER" ? "5er-Karte" : "10er-Karte"} (${k.einheitenRest} übrig)`,
       })),
     };
   });
+
+  const standortOptionen = alleStandorte.map((s) => ({ slug: s.slug, name: s.name }));
 
   return (
     <>
@@ -74,8 +89,9 @@ export default async function BuchenPage({
                   <h1 className="t-1">buchen</h1>
                 </div>
                 <p className="lede">
-                  Stundenplan für {standort.ort ?? standort.name}. Nach Woche, Kurs, Niveau oder
-                  Lehrkraft filterbar, buchen geht nur mit Konto.{" "}
+                  Stundenplan für beide Standorte, standardmäßig auf {standort.name} gefiltert, oben
+                  umschaltbar. Nach Woche, Standort, Kurs, Niveau oder Lehrkraft filterbar, buchen geht
+                  nur mit Konto.{" "}
                   {!kunde ? (
                     <>
                       <Link className="go" href={`/${standort.slug}/konto/login`}>
@@ -100,7 +116,12 @@ export default async function BuchenPage({
             {kursplanTermine.length === 0 ? (
               <p className="muted">Aktuell sind keine Termine geplant.</p>
             ) : (
-              <Kursplan standortSlug={standort.slug} eingeloggt={Boolean(kunde)} termine={kursplanTermine} />
+              <Kursplan
+                aktuellerStandortSlug={standort.slug}
+                standorte={standortOptionen}
+                eingeloggt={Boolean(kunde)}
+                termine={kursplanTermine}
+              />
             )}
           </div>
         </section>

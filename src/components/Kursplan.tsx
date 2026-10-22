@@ -18,7 +18,14 @@ export interface KursplanTermin {
   skalaLabel: string | null;
   karteGueltig: boolean;
   preisLabel: string;
+  standortSlug: string;
+  standortName: string;
   nutzbareKarten: { id: string; label: string }[];
+}
+
+export interface KursplanStandort {
+  slug: string;
+  name: string;
 }
 
 const WOCHENTAGE_KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -58,11 +65,13 @@ const WOCHEN_ZURUECK_MAX = 8;
 const WOCHEN_VORAUS_MAX = 16;
 
 export default function Kursplan({
-  standortSlug,
+  aktuellerStandortSlug,
+  standorte,
   eingeloggt,
   termine,
 }: {
-  standortSlug: string;
+  aktuellerStandortSlug: string;
+  standorte: KursplanStandort[];
   eingeloggt: boolean;
   termine: KursplanTermin[];
 }) {
@@ -71,6 +80,7 @@ export default function Kursplan({
   const [aktivitaet, setAktivitaet] = useState("");
   const [niveau, setNiveau] = useState("");
   const [lehrkraft, setLehrkraft] = useState("");
+  const [standortFilter, setStandortFilter] = useState(aktuellerStandortSlug);
   const [offenesFormular, setOffenesFormular] = useState<string | null>(null);
 
   const aktivitaeten = useMemo(
@@ -95,13 +105,14 @@ export default function Kursplan({
   const gefiltert = useMemo(() => {
     const suchbegriff = suche.trim().toLowerCase();
     return termine.filter((t) => {
+      if (standortFilter && t.standortSlug !== standortFilter) return false;
       if (suchbegriff && !t.kursName.toLowerCase().includes(suchbegriff)) return false;
       if (aktivitaet && t.kursName !== aktivitaet) return false;
       if (niveau && t.skalaLabel !== niveau) return false;
       if (lehrkraft && t.trainerName !== lehrkraft) return false;
       return true;
     });
-  }, [termine, suche, aktivitaet, niveau, lehrkraft]);
+  }, [termine, suche, aktivitaet, niveau, lehrkraft, standortFilter]);
 
   const montag = montagDerWoche(addTage(new Date(), wochenVersatz * 7));
   const tage = Array.from({ length: 7 }, (_, i) => addTage(montag, i));
@@ -143,6 +154,26 @@ export default function Kursplan({
               heute
             </button>
           ) : null}
+        </div>
+
+        <div className="kalender-standorte" role="group" aria-label="Nach Standort filtern">
+          <button
+            type="button"
+            className={`pill-filter${standortFilter === "" ? " pill-filter-aktiv" : ""}`}
+            onClick={() => setStandortFilter("")}
+          >
+            Beide Standorte
+          </button>
+          {standorte.map((s) => (
+            <button
+              key={s.slug}
+              type="button"
+              className={`pill-filter${standortFilter === s.slug ? " pill-filter-aktiv" : ""}`}
+              onClick={() => setStandortFilter(s.slug)}
+            >
+              {s.name}
+            </button>
+          ))}
         </div>
 
         <div className="kalender-filter">
@@ -219,6 +250,7 @@ export default function Kursplan({
                       <p className="small kurs-karte-zeit">
                         {formatUhrzeit(t.beginnIso)} – {formatUhrzeit(t.endeIso)}
                       </p>
+                      <span className="pill pill-standort kurs-karte-standort">{t.standortName}</span>
                       {t.skalaLabel ? <span className="pill pill-off kurs-karte-niveau">{t.skalaLabel}</span> : null}
                       {t.trainerName ? <p className="small muted kurs-karte-trainer">{t.trainerName}</p> : null}
 
@@ -243,13 +275,13 @@ export default function Kursplan({
                       ) : istVergangen ? (
                         <p className="small kurs-karte-status">vergangen</p>
                       ) : !eingeloggt ? (
-                        <Link className="go small" href={`/${standortSlug}/konto/login`}>
+                        <Link className="go small" href={`/${t.standortSlug}/konto/login`}>
                           Login zum Buchen
                         </Link>
                       ) : offenesFormular === t.id ? (
                         <div className="kurs-karte-formular">
                           <BuchenForm
-                            standortSlug={standortSlug}
+                            standortSlug={t.standortSlug}
                             kursTerminId={t.id}
                             preisLabel={t.preisLabel}
                             karten={t.nutzbareKarten}
