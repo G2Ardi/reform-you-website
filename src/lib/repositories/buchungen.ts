@@ -2,19 +2,31 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getEinstellungen } from "@/lib/repositories/einstellungen";
 import { erstelleKulanzGuthaben } from "@/lib/repositories/karten";
+import { GUTHABEN_LAUFZEIT_MONATE } from "@/lib/credits";
 import {
   sendeBuchungsbestaetigung,
   sendeErinnerung,
   sendeGutschriftBeiAusfall,
   sendeStornoBestaetigung,
-  sendeWartelisteNachruecken,
+  sendeStudioBenachrichtigungBuchung,
+  sendeWartelistePlatzFrei,
 } from "@/lib/mail/versand";
 
 /**
  * Herzstück der Buchungslogik: buchen, stornieren, umbuchen, Warteliste,
- * No-Show, Kursausfall, Erinnerungsversand. Siehe Auftrag für die genauen
- * Regeln (Stornofrist, Warteliste-Reaktionsfrist 30 Minuten, Gutschrift
- * statt Geldrückerstattung, Kulanz durch die Admin).
+ * Anwesenheit, Kursausfall, Erinnerungsversand.
+ *
+ * Regeln (Stand November 2026, mit Janina abgestimmt):
+ * - Eine Buchung kostet 1 Credit oder eine bezahlte Einzelstunde.
+ * - Storno vor Ablauf der Stornofrist: Credit zurück auf dieselbe Karte,
+ *   bei Einzelzahlung 1 Credit Guthaben (kein Geld zurück).
+ * - Storno nach Ablauf der Frist ist erlaubt, aber ohne Gutschrift. Der
+ *   Platz wird frei und die Warteliste wird informiert.
+ * - Warteliste: Alle Wartenden werden informiert, wenn ein Platz frei wird.
+ *   Es gibt keine Reservierung und kein Zeitlimit. Wer zuerst bucht, bekommt
+ *   den Platz.
+ * - Umbuchen nur vor Ablauf der Stornofrist, danach gilt Storno ohne
+ *   Gutschrift und eine neue Buchung für 1 Credit.
  */
 
 const VOLLER_BEZUG = {
@@ -34,8 +46,18 @@ async function ladeTerminFuerBuchung(kursTerminId: string) {
   return termin;
 }
 
+/** Belegt einen Platz: gebucht oder bereits als anwesend markiert. */
 function gebuchtePlaetze(buchungen: { status: string }[]): number {
-  return buchungen.filter((b) => b.status === "GEBUCHT").length;
+  return buchungen.filter((b) => b.status === "GEBUCHT" || b.status === "ANWESEND").length;
+}
+
+export function stornoFristEnde(beginn: Date, fristStunden: number): Date {
+  return new Date(beginn.getTime() - fristStunden * 60 * 60 * 1000);
+}
+
+export async function istStornoFristAbgelaufen(beginn: Date): Promise<boolean> {
+  const einstellungen = await getEinstellungen();
+  return new Date() >= stornoFristEnde(beginn, einstellungen.stornoFristStunden);
 }
 
 export async function erstelleBuchung(params: {
@@ -43,6 +65,9 @@ export async function erstelleBuchung(params: {
   kursTerminId: string;
   zahlungsart: "KARTE" | "EINZELZAHLUNG";
   karteId?: string;
+  /** Beim Kauf einer Einzelstunde: nicht auf die Warteliste ausweichen, sonst
+   * wuerde der Kunde fuer einen Platz zahlen, den er nicht bekommt. */
+  nurBeiFreiemPlatz?: boolean;
 }) {
   const termin = await ladeTerminFuerBuchung(params.kursTerminId);
 
@@ -61,32 +86,55 @@ export async function erstelleBuchung(params: {
       status: { in: ["GEBUCHT", "WARTELISTE"] },
     },
   });
-  if (bereitsAktiv) {
-    throw new BuchungsFehler("Sie haben diesen Termin bereits gebucht oder stehen auf der Warteliste.");
-  }
-
-  let karte = null;
-  if (params.zahlungsart === "KARTE") {
-    if (!params.karteId) throw new BuchungsFehler("Bitte eine Karte auswählen.");
-    karte = await prisma.karte.findUnique({ where: { id: params.karteId } });
-    if (!karte || karte.kundeId !== params.kundeId) {
-      throw new BuchungsFehler("Diese Karte gehört nicht zu Ihrem Konto.");
-    }
-    if (karte.einheitenRest <= 0) throw new BuchungsFehler("Diese Karte hat kein Restguthaben mehr.");
-    if (karte.gueltigBis < new Date()) throw new BuchungsFehler("Diese Karte ist abgelaufen.");
-    if (karte.typ !== "GUTHABEN" && !termin.kurs.karteGueltig) {
-      throw new BuchungsFehler("Für diesen Kurs kann keine Karte eingelöst werden.");
-    }
-  }
-
   const freiePlaetze = termin.kapazitaet - gebuchtePlaetze(termin.buchungen);
   const wirdWarteliste = freiePlaetze <= 0;
 
+  if (bereitsAktiv?.status === "GEBUCHT") {
+    throw new BuchungsFehler("Du hast diesen Termin bereits gebucht.");
+  }
+  if (bereitsAktiv?.status === "WARTELISTE" && wirdWarteliste) {
+    throw new BuchungsFehler("Du stehst für diesen Termin bereits auf der Warteliste.");
+  }
+  if (wirdWarteliste && params.nurBeiFreiemPlatz) {
+    throw new BuchungsFehler("Dieser Termin ist inzwischen voll. Es wurde nichts abgebucht.");
+  }
+
+  let karte = null;
+  if (params.zahlungsart === "KARTE" && !wirdWarteliste) {
+    if (!params.karteId) throw new BuchungsFehler("Bitte Credits auswählen.");
+    karte = await prisma.karte.findUnique({ where: { id: params.karteId } });
+    if (!karte || karte.kundeId !== params.kundeId) {
+      throw new BuchungsFehler("Diese Credits gehören nicht zu deinem Konto.");
+    }
+    if (karte.einheitenRest <= 0) throw new BuchungsFehler("Diese Credits sind aufgebraucht.");
+    if (karte.gueltigBis < new Date()) throw new BuchungsFehler("Diese Credits sind abgelaufen.");
+    if (karte.typ !== "GUTHABEN" && !termin.kurs.karteGueltig) {
+      throw new BuchungsFehler("Für diesen Kurs können keine Credits eingelöst werden.");
+    }
+  }
+
   const buchung = await prisma.$transaction(async (tx) => {
+    // Auf der Warteliste wird nichts abgebucht, die Zahlung folgt erst, wenn
+    // aus dem Wartelisteneintrag eine echte Buchung wird.
     if (!wirdWarteliste && karte) {
-      await tx.karte.update({
-        where: { id: karte.id },
+      const res = await tx.karte.updateMany({
+        where: { id: karte.id, einheitenRest: { gt: 0 } },
         data: { einheitenRest: { decrement: 1 } },
+      });
+      if (res.count !== 1) throw new BuchungsFehler("Diese Credits sind aufgebraucht.");
+    }
+
+    // Eigener Wartelisteneintrag wird zur echten Buchung hochgestuft.
+    if (bereitsAktiv?.status === "WARTELISTE" && !wirdWarteliste) {
+      return tx.buchung.update({
+        where: { id: bereitsAktiv.id },
+        data: {
+          status: "GEBUCHT",
+          zahlungsart: params.zahlungsart,
+          karteId: karte?.id ?? null,
+          wartelistePosition: null,
+        },
+        include: VOLLER_BEZUG,
       });
     }
 
@@ -97,9 +145,6 @@ export async function erstelleBuchung(params: {
         status: wirdWarteliste ? "WARTELISTE" : "GEBUCHT",
         zahlungsart: params.zahlungsart,
         karteId: wirdWarteliste ? null : (karte?.id ?? null),
-        // Zahlungsart/Kartenwunsch merken wir uns zusätzlich am Datensatz,
-        // damit beim Nachrücken aus der Warteliste dieselbe Zahlungsart
-        // greift (siehe bestaetigeWartelistenPlatz).
         wartelistePosition: wirdWarteliste
           ? (await tx.buchung.count({
               where: { kursTerminId: params.kursTerminId, status: "WARTELISTE" },
@@ -110,28 +155,22 @@ export async function erstelleBuchung(params: {
     });
   });
 
-  if (!wirdWarteliste) {
+  if (buchung.status === "GEBUCHT") {
     await sendeBuchungsbestaetigung(buchung);
+    await sendeStudioBenachrichtigungBuchung(buchung);
   }
 
   return buchung;
 }
 
-async function pruefeStornoBerechtigung(
-  buchung: { kursTermin: { beginn: Date }; status: string },
-  erzwingenDurchAdmin: boolean,
-) {
-  if (erzwingenDurchAdmin) return;
-  if (buchung.status === "WARTELISTE") return; // Warteliste ist immer kostenlos stornierbar
-  const einstellungen = await getEinstellungen();
-  const fristEnde = new Date(
-    buchung.kursTermin.beginn.getTime() - einstellungen.stornoFristStunden * 60 * 60 * 1000,
-  );
-  if (new Date() >= fristEnde) {
-    throw new BuchungsFehler(
-      `Die Stornofrist ist abgelaufen (${einstellungen.stornoFristStunden} Stunden vor Kursbeginn). Nicht mehr stornierbar.`,
-    );
-  }
+export interface StornoErgebnis {
+  buchung: Awaited<ReturnType<typeof ladeBuchungVoll>>;
+  gutschrift: boolean;
+  nachFrist: boolean;
+}
+
+async function ladeBuchungVoll(buchungId: string) {
+  return prisma.buchung.findUnique({ where: { id: buchungId }, include: VOLLER_BEZUG });
 }
 
 export async function storniereBuchung(params: {
@@ -139,207 +178,211 @@ export async function storniereBuchung(params: {
   kundeId?: string;
   erzwingenDurchAdmin?: boolean;
   grund?: string;
-}) {
-  const buchung = await prisma.buchung.findUnique({
-    where: { id: params.buchungId },
-    include: VOLLER_BEZUG,
-  });
+}): Promise<StornoErgebnis> {
+  const buchung = await ladeBuchungVoll(params.buchungId);
   if (!buchung) throw new BuchungsFehler("Buchung nicht gefunden.");
   if (params.kundeId && buchung.kundeId !== params.kundeId) {
-    throw new BuchungsFehler("Diese Buchung gehört nicht zu Ihrem Konto.");
+    throw new BuchungsFehler("Diese Buchung gehört nicht zu deinem Konto.");
   }
   if (buchung.status !== "GEBUCHT" && buchung.status !== "WARTELISTE") {
     throw new BuchungsFehler("Diese Buchung ist bereits storniert oder abgeschlossen.");
   }
-
-  await pruefeStornoBerechtigung(buchung, Boolean(params.erzwingenDurchAdmin));
+  if (buchung.kursTermin.beginn < new Date() && !params.erzwingenDurchAdmin) {
+    throw new BuchungsFehler("Dieser Termin hat bereits begonnen und kann nicht mehr storniert werden.");
+  }
 
   const warGebucht = buchung.status === "GEBUCHT";
+  // Warteliste ist immer kostenlos stornierbar. Bei einer gebuchten Stunde
+  // gibt es nach Fristablauf keine Gutschrift, ausser der Admin gibt Kulanz.
+  const nachFrist = warGebucht && (await istStornoFristAbgelaufen(buchung.kursTermin.beginn));
+  const gutschrift = warGebucht && (!nachFrist || Boolean(params.erzwingenDurchAdmin));
+
+  const standardGrund = params.erzwingenDurchAdmin
+    ? "Kulanz, durch Admin storniert"
+    : nachFrist
+      ? "Von Kunde nach Ablauf der Stornofrist storniert, keine Gutschrift"
+      : "Von Kunde storniert";
 
   await prisma.$transaction(async (tx) => {
     await tx.buchung.update({
       where: { id: buchung.id },
-      data: {
-        status: "STORNIERT",
-        storniertAm: new Date(),
-        stornoGrund: params.grund ?? (params.erzwingenDurchAdmin ? "Kulanz, durch Admin storniert" : "Von Kunde storniert"),
-      },
+      data: { status: "STORNIERT", storniertAm: new Date(), stornoGrund: params.grund ?? standardGrund },
     });
 
-    if (warGebucht) {
-      if (buchung.zahlungsart === "KARTE" && buchung.karteId) {
-        const karte = await tx.karte.findUnique({ where: { id: buchung.karteId } });
-        if (karte) {
-          await tx.karte.update({
-            where: { id: karte.id },
-            data: { einheitenRest: Math.min(karte.einheitenGesamt, karte.einheitenRest + 1) },
-          });
-        }
-      } else if (buchung.zahlungsart === "EINZELZAHLUNG") {
-        // Innerhalb der Transaktion bewusst mit "tx" statt der Repository-
-        // Funktion erstelleKulanzGuthaben: die nutzt den globalen Prisma-
-        // Client, eine zweite Verbindung innerhalb derselben interaktiven
-        // Transaktion blockiert sich sonst selbst (SQLite erlaubt nur einen
-        // Schreibzugriff gleichzeitig).
-        const gueltigBis = new Date();
-        gueltigBis.setMonth(gueltigBis.getMonth() + 6);
-        await tx.karte.create({
-          data: {
-            kundeId: buchung.kundeId,
-            typ: "GUTHABEN",
-            einheitenGesamt: 1,
-            einheitenRest: 1,
-            gueltigBis,
-            notiz: `Guthaben aus Stornierung der Einzelbuchung ${buchung.id}`,
-          },
+    if (!gutschrift) return;
+
+    if (buchung.zahlungsart === "KARTE" && buchung.karteId) {
+      const karte = await tx.karte.findUnique({ where: { id: buchung.karteId } });
+      if (karte) {
+        // Ablaufdatum der Credits bleibt unverändert, auch bei kurzer Restlaufzeit.
+        await tx.karte.update({
+          where: { id: karte.id },
+          data: { einheitenRest: Math.min(karte.einheitenGesamt, karte.einheitenRest + 1) },
         });
       }
+    } else if (buchung.zahlungsart === "EINZELZAHLUNG") {
+      // Kein Geld zurück: 1 Credit Guthaben. Innerhalb der Transaktion bewusst
+      // mit "tx" statt der Repository-Funktion, siehe erstelleKulanzGuthaben.
+      const gueltigBis = new Date();
+      gueltigBis.setMonth(gueltigBis.getMonth() + GUTHABEN_LAUFZEIT_MONATE);
+      await tx.karte.create({
+        data: {
+          kundeId: buchung.kundeId,
+          typ: "GUTHABEN",
+          einheitenGesamt: 1,
+          einheitenRest: 1,
+          gueltigBis,
+          notiz: `Guthaben aus Stornierung der Einzelbuchung ${buchung.id}`,
+        },
+      });
     }
   });
 
-  await sendeStornoBestaetigung(buchung);
+  await sendeStornoBestaetigung(buchung, { gutschrift, nachFrist });
 
   if (warGebucht) {
-    await pruefeUndBenachrichtigeWarteliste(buchung.kursTerminId);
+    await benachrichtigeWarteliste(buchung.kursTerminId);
   }
 
-  return buchung;
+  return { buchung, gutschrift, nachFrist };
+}
+
+/** Termine, auf die eine bestehende Buchung ohne Aufpreis verschoben werden
+ * darf: gleiche Credits-Eignung, bei Einzelzahlung gleicher Einzelpreis,
+ * freier Platz, beide Standorte. */
+export async function getUmbuchOptionen(buchungId: string) {
+  const alt = await prisma.buchung.findUnique({ where: { id: buchungId }, include: VOLLER_BEZUG });
+  if (!alt) return [];
+
+  const nurKarteGueltig = alt.zahlungsart === "KARTE" && alt.karte?.typ !== "GUTHABEN";
+  const kandidaten = await prisma.kursTermin.findMany({
+    where: {
+      status: "AKTIV",
+      beginn: { gte: new Date(Date.now() + 15 * 60_000) },
+      id: { not: alt.kursTerminId },
+      kurs: {
+        ...(nurKarteGueltig ? { karteGueltig: true } : {}),
+        ...(alt.zahlungsart === "EINZELZAHLUNG" ? { preisEinzelCent: alt.kursTermin.kurs.preisEinzelCent } : {}),
+      },
+    },
+    include: { kurs: true, standort: true, buchungen: true },
+    orderBy: { beginn: "asc" },
+    take: 60,
+  });
+  return kandidaten.filter((t) => t.kapazitaet - gebuchtePlaetze(t.buchungen) > 0);
 }
 
 export async function umbucheBuchung(params: { buchungId: string; kundeId?: string; neuerKursTerminId: string }) {
-  const alt = await prisma.buchung.findUnique({ where: { id: params.buchungId }, include: VOLLER_BEZUG });
+  const alt = await ladeBuchungVoll(params.buchungId);
   if (!alt) throw new BuchungsFehler("Buchung nicht gefunden.");
   if (params.kundeId && alt.kundeId !== params.kundeId) throw new BuchungsFehler("Buchung nicht gefunden.");
-  if (alt.status !== "GEBUCHT") throw new BuchungsFehler("Nur bestätigte Buchungen können umgebucht werden.");
+  if (alt.status !== "GEBUCHT") throw new BuchungsFehler("Nur bestätigte Buchungen können verschoben werden.");
 
-  await pruefeStornoBerechtigung(alt, false);
+  if (await istStornoFristAbgelaufen(alt.kursTermin.beginn)) {
+    throw new BuchungsFehler(
+      "Die Frist ist abgelaufen. Du kannst die Buchung noch stornieren (ohne Gutschrift) und einen neuen Kurs für 1 Credit buchen.",
+    );
+  }
 
   const neuerTermin = await ladeTerminFuerBuchung(params.neuerKursTerminId);
   if (neuerTermin.status !== "AKTIV") throw new BuchungsFehler("Der neue Termin ist ausgefallen.");
+  if (neuerTermin.beginn.getTime() - 15 * 60_000 <= Date.now()) {
+    throw new BuchungsFehler("Der neue Termin ist nicht mehr buchbar.");
+  }
+  if (alt.zahlungsart === "KARTE" && alt.karte?.typ !== "GUTHABEN" && !neuerTermin.kurs.karteGueltig) {
+    throw new BuchungsFehler("Für diesen Kurs können keine Credits eingelöst werden.");
+  }
+  if (alt.zahlungsart === "EINZELZAHLUNG" && neuerTermin.kurs.preisEinzelCent !== alt.kursTermin.kurs.preisEinzelCent) {
+    throw new BuchungsFehler("Dieser Kurs kostet etwas anderes. Bitte stornieren und neu buchen.");
+  }
 
-  const freiePlaetze = neuerTermin.kapazitaet - gebuchtePlaetze(neuerTermin.buchungen);
-  const wirdWarteliste = freiePlaetze <= 0;
+  const bereitsGebucht = await prisma.buchung.findFirst({
+    where: { kundeId: alt.kundeId, kursTerminId: params.neuerKursTerminId, status: { in: ["GEBUCHT", "WARTELISTE"] } },
+  });
+  if (bereitsGebucht && bereitsGebucht.status === "GEBUCHT") {
+    throw new BuchungsFehler("Für diesen Termin bist du bereits gebucht.");
+  }
+
+  if (neuerTermin.kapazitaet - gebuchtePlaetze(neuerTermin.buchungen) <= 0) {
+    throw new BuchungsFehler("Der neue Termin ist voll. Tritt der Warteliste im Kursplan bei und storniere danach diese Buchung.");
+  }
 
   const neu = await prisma.$transaction(async (tx) => {
     await tx.buchung.update({
       where: { id: alt.id },
-      data: { status: "STORNIERT", storniertAm: new Date(), stornoGrund: `Umgebucht auf Termin ${params.neuerKursTerminId}` },
+      data: { status: "STORNIERT", storniertAm: new Date(), stornoGrund: `Verschoben auf Termin ${params.neuerKursTerminId}` },
     });
+
+    if (bereitsGebucht?.status === "WARTELISTE") {
+      await tx.buchung.update({
+        where: { id: bereitsGebucht.id },
+        data: { status: "STORNIERT", storniertAm: new Date(), stornoGrund: "Durch Verschieben ersetzt" },
+      });
+    }
 
     return tx.buchung.create({
       data: {
         kundeId: alt.kundeId,
         kursTerminId: params.neuerKursTerminId,
-        status: wirdWarteliste ? "WARTELISTE" : "GEBUCHT",
+        status: "GEBUCHT",
         zahlungsart: alt.zahlungsart,
         karteId: alt.karteId,
-        wartelistePosition: wirdWarteliste
-          ? (await tx.buchung.count({ where: { kursTerminId: params.neuerKursTerminId, status: "WARTELISTE" } })) + 1
-          : null,
       },
       include: VOLLER_BEZUG,
     });
   });
 
-  await pruefeUndBenachrichtigeWarteliste(alt.kursTerminId);
-  if (!wirdWarteliste) await sendeBuchungsbestaetigung(neu);
+  await benachrichtigeWarteliste(alt.kursTerminId);
+  await sendeBuchungsbestaetigung(neu);
+  await sendeStudioBenachrichtigungBuchung(neu);
 
   return neu;
 }
 
-const WARTELISTE_FRIST_MINUTEN = 30;
-
-export async function pruefeUndBenachrichtigeWarteliste(kursTerminId: string) {
+/**
+ * Wird ein Platz frei, bekommen alle Wartenden dieses Termins eine Mail mit
+ * Link zum Kursplan. Es gibt keine Reservierung: wer zuerst bucht, bekommt
+ * den Platz. Wer schon eine Mail zu diesem freien Platz hat, bekommt keine
+ * zweite.
+ */
+export async function benachrichtigeWarteliste(kursTerminId: string) {
   const termin = await prisma.kursTermin.findUnique({
     where: { id: kursTerminId },
     include: { buchungen: true },
   });
   if (!termin || termin.status !== "AKTIV") return;
+  if (termin.beginn < new Date()) return;
 
   const freie = termin.kapazitaet - gebuchtePlaetze(termin.buchungen);
   if (freie <= 0) return;
 
-  const schonBenachrichtigt = termin.buchungen.some(
-    (b) => b.status === "WARTELISTE" && b.warteBenachrichtigtAm !== null && b.warteFristBisAm && b.warteFristBisAm > new Date(),
-  );
-  if (schonBenachrichtigt) return;
-
-  const naechste = await prisma.buchung.findFirst({
-    where: { kursTerminId, status: "WARTELISTE", warteBenachrichtigtAm: null },
+  const wartende = await prisma.buchung.findMany({
+    where: { kursTerminId, status: "WARTELISTE" },
+    include: VOLLER_BEZUG,
     orderBy: { createdAt: "asc" },
-    include: VOLLER_BEZUG,
-  });
-  if (!naechste) return;
-
-  const warteFristBisAm = new Date(Date.now() + WARTELISTE_FRIST_MINUTEN * 60_000);
-  const aktualisiert = await prisma.buchung.update({
-    where: { id: naechste.id },
-    data: { warteBenachrichtigtAm: new Date(), warteFristBisAm },
-    include: VOLLER_BEZUG,
   });
 
-  await sendeWartelisteNachruecken(aktualisiert);
-}
-
-/** Lazy Ablaufprüfung statt echtem Cronjob: bei jedem Aufruf prüfen, ob die
- * 30-Minuten-Frist einer benachrichtigten Warteliste-Person verstrichen ist,
- * und falls ja, die Person überspringen und die nächste benachrichtigen. */
-export async function pruefeWartelisteAblauf(kursTerminId: string) {
-  const abgelaufen = await prisma.buchung.findMany({
-    where: {
-      kursTerminId,
-      status: "WARTELISTE",
-      warteBenachrichtigtAm: { not: null },
-      warteFristBisAm: { lt: new Date() },
-    },
-  });
-
-  for (const b of abgelaufen) {
-    await prisma.buchung.update({
-      where: { id: b.id },
-      data: { status: "STORNIERT", storniertAm: new Date(), stornoGrund: "Warteliste-Frist abgelaufen" },
-    });
+  for (const w of wartende) {
+    await sendeWartelistePlatzFrei(w);
+    await prisma.buchung.update({ where: { id: w.id }, data: { warteBenachrichtigtAm: new Date() } });
   }
-
-  if (abgelaufen.length > 0) {
-    await pruefeUndBenachrichtigeWarteliste(kursTerminId);
-  }
-}
-
-export async function bestaetigeWartelistenPlatz(buchungId: string) {
-  const buchung = await prisma.buchung.findUnique({ where: { id: buchungId }, include: VOLLER_BEZUG });
-  if (!buchung) throw new BuchungsFehler("Buchung nicht gefunden.");
-  if (buchung.status !== "WARTELISTE") throw new BuchungsFehler("Diese Buchung steht nicht mehr auf der Warteliste.");
-  if (!buchung.warteBenachrichtigtAm || !buchung.warteFristBisAm || buchung.warteFristBisAm < new Date()) {
-    throw new BuchungsFehler("Die 30-Minuten-Frist für diesen Platz ist bereits abgelaufen.");
-  }
-
-  if (buchung.zahlungsart === "KARTE") {
-    if (!buchung.karteId) throw new BuchungsFehler("Keine Karte hinterlegt.");
-    const karte = await prisma.karte.findUnique({ where: { id: buchung.karteId } });
-    if (!karte || karte.einheitenRest <= 0 || karte.gueltigBis < new Date()) {
-      throw new BuchungsFehler("Ihre hinterlegte Karte reicht nicht mehr aus, bitte im Konto eine andere wählen.");
-    }
-    await prisma.karte.update({ where: { id: karte.id }, data: { einheitenRest: { decrement: 1 } } });
-  }
-
-  const aktualisiert = await prisma.buchung.update({
-    where: { id: buchung.id },
-    data: { status: "GEBUCHT", wartelistePosition: null },
-    include: VOLLER_BEZUG,
-  });
-
-  await sendeBuchungsbestaetigung(aktualisiert);
-  return aktualisiert;
 }
 
 export async function markiereNoShow(buchungId: string) {
   const buchung = await prisma.buchung.findUnique({ where: { id: buchungId } });
-  if (!buchung || buchung.status !== "GEBUCHT") {
+  if (!buchung || (buchung.status !== "GEBUCHT" && buchung.status !== "ANWESEND")) {
     throw new BuchungsFehler("Nur bestätigte Buchungen können als No-Show markiert werden.");
   }
   // No-Show: Einheit/Credit verfaellt ersatzlos, keine Erstattung.
   return prisma.buchung.update({ where: { id: buchungId }, data: { status: "NO_SHOW" } });
+}
+
+export async function markiereAnwesend(buchungId: string) {
+  const buchung = await prisma.buchung.findUnique({ where: { id: buchungId } });
+  if (!buchung || (buchung.status !== "GEBUCHT" && buchung.status !== "NO_SHOW")) {
+    throw new BuchungsFehler("Nur bestätigte Buchungen können als anwesend markiert werden.");
+  }
+  return prisma.buchung.update({ where: { id: buchungId }, data: { status: "ANWESEND" } });
 }
 
 export async function lasseKursAusfallen(kursTerminId: string) {

@@ -348,6 +348,8 @@ enum BuchungStatus {
   WARTELISTE
   STORNIERT
   NO_SHOW
+  /// Von Trainer oder Admin als anwesend markiert, nur additiv ergaenzt.
+  ANWESEND
 }
 
 enum ZahlungsArt {
@@ -415,6 +417,111 @@ model Karte {
   updatedAt DateTime @updatedAt
 
   @@map("karten")
+}
+
+// ============================================================
+// Credits-Modell, Gutscheine, Umsatz, Mitarbeiter (additiv ergaenzt)
+// ============================================================
+
+enum GutscheinStatus {
+  /// Bezahlt, Lieferdatum liegt noch in der Zukunft, Code noch nicht verschickt
+  GEPLANT
+  /// Code wurde an den Empfaenger verschickt
+  VERSENDET
+}
+
+/// Wertgutschein in Euro, per Code einloesbar beim Bezahlschritt. Der
+/// Restbetrag bleibt nach Teilverwendung auf dem Code stehen.
+model Gutschein {
+  id           String          @id @default(cuid())
+  code         String          @unique
+  betragCent   Int
+  restCent     Int
+  gueltigBis   DateTime
+  status       GutscheinStatus @default(GEPLANT)
+
+  kaeuferName  String
+  kaeuferEmail String
+  empfaengerName  String
+  empfaengerEmail String
+  nachricht    String?
+  lieferDatum  DateTime
+  versandtAm   DateTime?
+
+  zahlungen Zahlung[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("gutscheine")
+}
+
+enum ZahlungsZweck {
+  EINZELSTUNDE
+  CREDITS
+  GUTSCHEIN
+}
+
+/// Eingegangenes Geld (nach Abzug eines eingeloesten Gutscheins). Grundlage
+/// der Umsatzauswertung. anbieter ist "TEST", solange keine Zahlungsanbindung
+/// (Stripe) aktiv ist, danach z. B. "STRIPE".
+model Zahlung {
+  id         String        @id @default(cuid())
+  zweck      ZahlungsZweck
+  betragCent Int
+  anbieter   String        @default("TEST")
+  bezug      String?
+
+  standortId String?
+  kundeId    String?
+  buchungId  String?
+  gutscheinId String?
+  gutschein   Gutschein? @relation(fields: [gutscheinId], references: [id])
+
+  /// Wert eines dabei eingeloesten Gutscheins, nur zur Nachvollziehbarkeit
+  gutscheinAbzugCent Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("zahlungen")
+}
+
+enum MitarbeiterRolle {
+  ADMIN
+  TRAINER
+}
+
+/// Login fuer den Admin-Bereich mit E-Mail und Passwort. Trainer sehen nur
+/// Kursplan und Teilnehmerliste. Admins mit darfUmsaetzeSehen sehen zusaetzlich
+/// den Umsatz und verwalten die Mitarbeiter.
+model Mitarbeiter {
+  id                String           @id @default(cuid())
+  name              String
+  email             String           @unique
+  passwortHash      String
+  rolle             MitarbeiterRolle
+  darfUmsaetzeSehen Boolean          @default(false)
+  aktiv             Boolean          @default(true)
+
+  sessions MitarbeiterSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("mitarbeiter")
+}
+
+model MitarbeiterSession {
+  id            String      @id @default(cuid())
+  token         String      @unique
+  mitarbeiterId String
+  mitarbeiter   Mitarbeiter @relation(fields: [mitarbeiterId], references: [id], onDelete: Cascade)
+  ablaufDatum   DateTime
+
+  createdAt DateTime @default(now())
+
+  @@map("mitarbeiter_sessions")
 }
 
 /// Singleton-Einstellungen, im Admin-Bereich aenderbar statt hart codiert.

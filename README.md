@@ -283,58 +283,92 @@ Zusätzlich zu `DATABASE_URL` (siehe oben):
 
 | Variable | Zweck |
 |---|---|
-| `ADMIN_PASSWORT` | Gemeinsames Passwort für den Admin-Bereich unter `/admin`. Einfacher Platzhalter-Schutz, kein echtes Rollensystem, nicht produktionsreif. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | SMTP-Zugangsdaten für nodemailer. Fehlen sie, wird der Mailversand übersprungen und verständlich geloggt, nichts crasht. |
-| `SMTP_FROM` | Absenderadresse/-name, z. B. `"Janina von Reform You <buchung@reform-you.de>"`. |
-| `STUDIO_BENACHRICHTIGUNG_EMAIL` | Erhält bei jeder Stornierung eine interne Benachrichtigung. |
-| `TOKEN_SECRET` | Signiert die Aktions-Links in E-Mails (Stornieren/Umbuchen/Warteliste bestätigen ohne Login). In Produktion durch einen eigenen Zufallswert ersetzen. |
+| `ADMIN_PASSWORT` | Nur noch Startpasswort: Gibt es noch keinen Mitarbeiter, legt der erste Login unter `/admin/login` mit beliebiger E-Mail und diesem Passwort automatisch den ersten Admin (mit Umsatzrecht) an. Danach hat jede Person ein eigenes Konto. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | SMTP-Zugangsdaten für nodemailer. Fehlen sie, wird der Mailversand übersprungen und verständlich geloggt, nichts crasht. Auf Vercel sind sie erst nach dem ordentlichen Hosting gesetzt. |
+| `SMTP_FROM` | Absenderadresse/-name, z. B. `"Janina von Reform You <info@reform-you.de>"`. |
+| `STUDIO_BENACHRICHTIGUNG_EMAIL` | Erhält bei jeder Buchung und Stornierung eine interne Benachrichtigung, Standard `info@reform-you.de`. |
+| `NEXT_PUBLIC_BASE_URL` | Basis der Links in E-Mails. Fehlt sie, nutzt der Code die Vercel-Produktions-URL, lokal `http://localhost:3000`. |
+| `CRON_SECRET` | Optional. Ist es gesetzt, akzeptiert `/api/cron/taeglich` nur Aufrufe mit `Authorization: Bearer <Wert>` (Vercel Cron sendet das automatisch). |
 
-### Admin-Bereich
+### Credits (früher Abo-Modell)
 
-Unter `/admin/login` mit `ADMIN_PASSWORT` einloggen. Enthält:
+Es gibt kein Abo. Man bucht eine Einzelstunde oder kauft **5 Credits** (3 Monate)
+oder **10 Credits** (6 Monate), siehe `src/lib/credits.ts`. Eine Buchung kostet
+1 Credit, die Laufzeit beginnt mit dem Kauf, Credits gelten an beiden
+Standorten. **Pilates x Mommy & Mini** ist nur als Einzelstunde buchbar
+(`Kurs.karteGueltig = false`). Guthaben aus Stornierungen einer Einzelstunde
+oder aus Kulanz (`Karte.typ = GUTHABEN`) gilt für jeden Kurs.
 
-- `/admin` – kommende Termine mit Teilnehmerzahl, Link zu Details
-- `/admin/termine/[id]` – Teilnehmerliste, No-Show markieren, Kurs ausfallen
-  lassen (automatische Gutschrift + Mail an alle), Kulanz-Storno trotz
-  abgelaufener Frist
-- `/admin/einstellungen` – Erinnerungsstunden und Stornofrist ändern, nicht
-  hart codiert
-- `/admin/erinnerungen` – manueller Versand-Knopf, siehe nächster Abschnitt
-- `/admin/kulanz` – Freitext-Werkzeug, um einem Kunden per E-Mail eine
-  Einheit, mehrere Einheiten oder eine ganze Karte gutzuschreiben
+Menüpunkt und Seite heißen "Credits" (`/[standort]/credits`), die alte
+Adresse `/abo` leitet weiter. In der Datenbank heißt die Tabelle weiter
+`karten`.
 
-### Erinnerungsmails ohne echten Cronjob
+### Bezahlschritt und Testmodus
 
-Es gibt noch keinen Scheduler. `/admin/erinnerungen` stößt den Versand für
-alle Buchungen an, die innerhalb der eingestellten `erinnerungStundenVorher`
-Stunden beginnen und noch keine Erinnerung erhalten haben
-(`src/lib/repositories/buchungen.ts`, `versendeFaelligeErinnerungen`). In
-Produktion diesen Button durch einen echten Cronjob ersetzen, der dieselbe
-Aktion regelmäßig auslöst, z. B.:
+`/[standort]/kasse` ist der Bezahlschritt für Credits und Einzelstunden mit
+Gutscheincode-Feld. Solange keine echte Zahlungsanbindung aktiv ist
+(`ZAHLUNGS_ANBIETER = "TEST"` in `src/lib/repositories/kasse.ts`), wird die
+Zahlung nur simuliert und als `Zahlung` mit Anbieter `TEST` gespeichert. Die
+Seiten zeigen dazu einen gelben Hinweis. Stripe (Karte, SEPA, PayPal, Apple
+Pay, Google Pay) ersetzt später genau diesen einen Schritt, `fuehreKaufDurch`.
 
-- **Vercel Cron**: eine Route-Handler-Variante der Admin-Aktion unter
-  `/api/cron/erinnerungen` anlegen, in `vercel.json` einen `crons`-Eintrag
-  z. B. alle 30 Minuten eintragen.
-- **Eigener Server**: ein `cron`-Job (Linux) oder die Windows-Aufgaben­planung,
-  der/die regelmäßig `curl` gegen eine entsprechend abgesicherte Route
-  aufruft.
+### Gutscheine
 
-Die Warteliste prüft ihre eigene 30-Minuten-Reaktionsfrist ähnlich "lazy"
-statt per Cronjob: bei jedem Aufruf der `/buchen`-Seite eines Standorts wird
-`pruefeWartelisteAblauf` für die sichtbaren Termine ausgeführt und rückt bei
-abgelaufener Frist automatisch die nächste Person nach. Zusätzlich lässt sich
-über den "Kulanz-Storno"- bzw. "Kurs ausfallen lassen"-Knopf im Admin-Bereich
-jederzeit manuell nachsteuern.
+`/[standort]/gutschein`: Beträge 25/50/100/150/200 Euro oder freier Betrag
+(Grenzen in `src/lib/credits.ts`), Empfänger, Lieferdatum, Nachricht, Kauf auch
+ohne Konto. Der Code (`RY-XXXX-XXXX`) geht am Lieferdatum per Mail an den
+Empfänger, gültig 3 Jahre ab Kauf. Eingelöst wird der Code im Bezahlschritt für
+Einzelstunden und Credits an beiden Standorten. Ein Restbetrag bleibt auf dem
+Code stehen, reicht der Wert nicht, zahlt man den Rest.
 
-### Guthabenkarten
+Der Versand am Lieferdatum läuft über den täglichen Cronjob
+`/api/cron/taeglich` (`vercel.json`, morgens). Er verschickt auch fällige
+Erinnerungen. Von Hand geht es über `/admin/erinnerungen` ("Versand").
 
-5er-Karte (120€, 3 Monate) und 10er-Karte (220€, 6 Monate), siehe
-`src/lib/repositories/karten.ts` (`KARTEN_KATALOG`). Karten gehören dem
-Kunden, nicht einem Standort (`Karte.kundeId`, kein `standortId`), und sind
-damit an beiden Standorten einlösbar. Eine Stornierung einer Einzelzahlung
-(nicht mit Karte bezahlt) erzeugt automatisch eine `GUTHABEN`-Karte mit einer
-Einheit statt einer Geldrückerstattung, genauso bei Kursausfall durch das
-Studio.
+### Stornieren, Verschieben, Warteliste
+
+- Bis `stornoFristStunden` (Standard 24) vor Kursbeginn: Storno gibt den Credit
+  zurück auf dieselbe Karte, das Ablaufdatum bleibt. Eine bezahlte
+  Einzelstunde gibt 1 Credit Guthaben (6 Monate), kein Geld.
+- Nach Ablauf der Frist ist Stornieren weiter möglich, aber ohne Gutschrift. Der
+  Platz wird frei.
+- Verschieben nur vor Ablauf der Frist. Danach: stornieren und neu buchen für
+  1 Credit.
+- Warteliste: Wird ein Platz frei, bekommen alle Wartenden eine Mail. Es gibt
+  keine Reservierung und kein Zeitlimit, wer zuerst bucht, bekommt den Platz.
+  Auf der Warteliste wird nichts abgebucht.
+- Die Bestätigungsmail enthält einen Link zur Buchung
+  (`/[standort]/konto/buchung/[id]`, Login erforderlich) mit Stornieren und
+  Verschieben. Die früheren Aktionslinks ohne Login gibt es nicht mehr.
+
+### Admin-Bereich: Rollen
+
+Anmeldung unter `/admin/login` mit E-Mail und Passwort.
+
+| Rolle | Darf |
+|---|---|
+| Admin mit Umsatzrecht (Inhaberin) | alles, dazu `/admin/umsatz` und `/admin/mitarbeiter` |
+| Admin ohne Umsatzrecht | Termine, Kulanz, Einstellungen, Versand, Kurs ausfallen lassen, keine Umsätze, keine Mitarbeiterverwaltung |
+| Trainer | Terminübersicht und Teilnehmerliste, Anwesend und No-Show markieren, keine Kundenkontakte |
+
+`/admin/umsatz`: Gesamtumsatz der letzten 30 Tage, aufgeschlüsselt nach
+Einzelstunden (je Standort), Credits und Gutscheinen. Das ist eine Auswertung,
+keine Buchhaltung. Es bleibt immer mindestens ein aktiver Admin mit
+Umsatzrecht übrig.
+
+### Standortwahl
+
+Bei jedem Besuch (neuer Tab bzw. neue Sitzung) muss zuerst ein Standort
+gewählt werden: Startseite `/` zeigt beide Standorte nebeneinander, auf allen
+anderen Seiten erscheint ein Pflicht-Popup (`StandortGate`). Innerhalb einer
+Sitzung fragt die Seite nicht noch einmal.
+
+### Kursplan
+
+`/[standort]/buchen`: Standort-Umschalter, Tagesleiste Mo bis So, darunter die
+Termine des gewählten Tages. Weitere Filter (Suche, Kurs, Niveau, Lehrkraft)
+liegen hinter dem Filtersymbol. Ist ein Termin voll, steht dort "Warteliste
+beitreten". Alle Zeiten laufen in deutscher Zeit (Europe/Berlin).
 
 ### Mehrwertsteuer-Umschaltung
 
@@ -352,16 +386,13 @@ angenommen:
 - **Kapazität von Pilates x Mommy & Mini**: 6 Plätze als Platzhalter
   übernommen, nicht bestätigt (für die Reformer-Kurse sind 6 Plätze dagegen
   bestätigt).
-- **Ob die 5er-/10er-Karte auch für Pilates x Mommy & Mini gilt**: Janina
-  sprach nur von "Reformer Kursen", deshalb aktuell `karteGueltig: false` für
-  diesen Kurs, aber nicht zu hundert Prozent sicher.
+- **Credits und Pilates x Mommy & Mini**: von Janina bestätigt, nur als Einzelstunde.
 - **Pausieren einer Karte**: nicht vorgesehen, aber auch nicht ausdrücklich
   ausgeschlossen, nicht bestätigt.
 
-### Ausdrücklich nicht gebaut
+### Ausdrücklich noch nicht gebaut
 
-Wie im Auftrag festgelegt: keine echte Zahlungsanbindung (Stripe/PayPal/
-SumUp), keine Gutschein- oder Events-Seiten, keine native App, keine
+Echte Zahlungsanbindung (Stripe, später), SMS bei Kursausfall, native App,
 Rechnungsstellung/DATEV-Export.
 
 ## Was noch fehlt (manuell, nicht technisch)
@@ -369,9 +400,7 @@ Rechnungsstellung/DATEV-Export.
 - **Produktivdatenbank**: Siehe Abschnitt "Lokale Testumgebung: SQLite statt
   Postgres" oben, vor dem echten Go-Live unbedingt auf Postgres umstellen.
 - **Echte SMTP-Zugangsdaten** für den Mailversand, siehe Umgebungsvariablen.
-- **Echtes Admin-Rollensystem**: aktuell ein einzelnes gemeinsames Passwort,
-  kein einzelnes Konto für Janina oder Mitarbeitende.
-- **Echter Cronjob** für Erinnerungsmails statt des manuellen Admin-Knopfs.
+- **Stripe-Anbindung** mit Live-Schlüsseln, danach den Testmodus abschalten.
 - **Echte Fotos** statt der markenfarbenen Platzhalterflächen, siehe Liste
   im Auftrag (Hero, Reformer, Studioraum, Reformer-Reihe, Janina, Paint &
   Wine, je ein Bild für die Standortauswahl).

@@ -26,6 +26,9 @@ export async function registrierenAction(
   if (!name || !email || !telefon || !strasse || !plz || !ort || !passwort) {
     return { fehler: "Bitte alle Felder ausfüllen." };
   }
+  if (telefon.replace(/\D/g, "").length < 6) {
+    return { fehler: "Bitte eine gültige Handynummer angeben." };
+  }
   if (passwort.length < 8) {
     return { fehler: "Das Passwort muss mindestens 8 Zeichen haben." };
   }
@@ -44,7 +47,14 @@ export async function registrierenAction(
   }
 
   await erstelleSession(kunde.id);
-  redirect(`/${standortSlug}/konto/profil`);
+  redirect(sichererZielpfad(formData.get("weiter")) ?? `/${standortSlug}/konto/profil`);
+}
+
+/** Nur interne Pfade zulassen, damit "weiter" kein offener Redirect wird. */
+function sichererZielpfad(wert: FormDataEntryValue | null): string | null {
+  const pfad = typeof wert === "string" ? wert : "";
+  if (!pfad.startsWith("/") || pfad.startsWith("//") || pfad.includes("\\")) return null;
+  return pfad;
 }
 
 export async function loginAction(
@@ -61,7 +71,7 @@ export async function loginAction(
   }
 
   await erstelleSession(kunde.id);
-  redirect(`/${standortSlug}/konto/profil`);
+  redirect(sichererZielpfad(formData.get("weiter")) ?? `/${standortSlug}/konto/profil`);
 }
 
 export async function logoutAction(standortSlug: string) {

@@ -31,7 +31,7 @@ export default async function StartPage({
   if (!standort) notFound();
 
   const hatKurse = standort.kurse.length > 0;
-  const hatAbo = standort.aboModelle.length > 0;
+  const hatCredits = hatKurse;
   const naechstesEvent = standort.events[0] ?? null;
   const ort = standort.ort ?? standort.name;
 
@@ -241,30 +241,26 @@ export default async function StartPage({
           </section>
         ) : null}
 
-        {hatAbo ? (
+        {hatCredits ? (
           <section className="band band-dark">
             <div className="shell">
               <Reveal>
                 <div className="split split-heavy-left">
                   <div className="stack-4">
                     <div className="stack-3">
-                      <p className="tag">Abo-Modell</p>
-                      <h2 className="t-2">der feste platz in deiner woche</h2>
+                      <p className="tag">Credits</p>
+                      <h2 className="t-2">buche flexibel mit credits</h2>
                     </div>
                     <p className="lede">
-                      Ein Abo sichert dir deinen Termin, statt dass du jede
-                      Woche neu schaust, ob noch etwas frei ist. Verfügbar für
-                      alle vier Kursformate.
-                    </p>
-                    <p className="small">
-                      <Flag>Konditionen eintragen</Flag>
+                      Kein Abo, keine Bindung: Du kaufst 5 oder 10 Credits und buchst damit jeden
+                      Reformer-Kurs an beiden Standorten. Eine Buchung kostet 1 Credit.
                     </p>
                     <div className="btns">
-                      <a className="btn" href={`/${standort.slug}/abo`}>
-                        Abo ansehen
+                      <a className="btn" href={`/${standort.slug}/credits`}>
+                        Credits ansehen
                       </a>
-                      <a className="btn btn-line" href={`/${standort.slug}/abo#geschenkkarte`}>
-                        Geschenkkarte
+                      <a className="btn btn-line" href={`/${standort.slug}/gutschein`}>
+                        Gutschein verschenken
                       </a>
                     </div>
                   </div>

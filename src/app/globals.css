@@ -23,13 +23,12 @@
   --chalk:    #FFFCF7;   /* Text auf dunkel, 12,8:1 */
   --flag:     #F2D24B;   /* fehlende Angabe, 8,8:1 zu Espresso */
 
-  /* Schrift. Als <link> auf Google Fonts geladen (siehe layout.tsx), nicht
-     ueber next/font: next/font vereinfacht variable Google Fonts auf die
-     Gewichtsachse, hier wird aber zusaetzlich die Laufweiten-Achse "wdth"
-     gebraucht (Kleinlabels auf wdth 125), die nur die echte CSS2-Variable-
-     Datei liefert. */
-  --display: "Bodoni Moda", "Times New Roman", serif;
-  --sans:    "Archivo", system-ui, -apple-system, sans-serif;
+  /* Schrift. Überschriften in Cormorant Garamond (weich, hochwertig, gut
+     lesbar, ohne die harten Haarlinien der früheren Didone), Fließtext,
+     Knöpfe und Beschriftungen in Jost (klar, geometrisch). Als <link> auf
+     Google Fonts geladen, siehe layout.tsx. */
+  --display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --sans:    "Jost", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Abstaende, grosszuegig weil Marketingseite */
   --s1: 0.5rem;
@@ -56,8 +55,8 @@ body {
   color: var(--espresso);
   font-family: var(--sans);
   font-variation-settings: "wdth" 100, "wght" 400;
-  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
-  line-height: 1.65;
+  font-size: clamp(1.0625rem, 1rem + 0.2vw, 1.125rem);
+  line-height: 1.6;
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
@@ -66,30 +65,35 @@ body {
 img, video, svg { max-width: 100%; height: auto; display: block; }
 
 /* ------------------------------------------------ Typografie */
-/* Die Wortmarke ist eine gemeine Didone. Also ist die
-   Anzeigenschrift gemein gesetzt, nicht in Grossbuchstaben. */
+/* Die Wortmarke ist klein geschrieben, also sind die Überschriften es auch.
+   Cormorant hat eine kleine x-Höhe, deshalb laufen die Größen etwas höher
+   als bei der früheren Schrift, und das Gewicht liegt bei 500 für Lesbarkeit. */
 .t-1, .t-2, .t-3 {
   font-family: var(--display);
   font-optical-sizing: auto;
-  font-weight: 400;
+  font-weight: 500;
   text-transform: lowercase;
-  letter-spacing: -0.018em;
-  line-height: 0.95;
+  letter-spacing: 0;
+  line-height: 1.02;
   margin: 0;
   text-wrap: balance;
 }
+
+.t-1 { font-size: clamp(2.5rem, 1.4rem + 5vw, 6.5rem); line-height: 0.98; }
+.t-2 { font-size: clamp(2.2rem, 1.5rem + 2.8vw, 3.9rem); }
+.t-3 { font-size: clamp(1.7rem, 1.4rem + 0.9vw, 2.1rem); line-height: 1.08; }
 
 .t-1 { font-size: clamp(2.05rem, 1.15rem + 4.6vw, 6.5rem); line-height: 0.92; }
 .t-2 { font-size: clamp(2rem, 1.3rem + 2.6vw, 3.6rem); }
 .t-3 { font-size: clamp(1.35rem, 1.15rem + 0.8vw, 1.75rem); line-height: 1.1; }
 
 /* Kleinlabel. Nachbau des Zusatzes PILATES STUDIO unter der
-   Wortmarke: breit laufende Archivo, gesperrt, in Versalien. */
+   Wortmarke: breit gesetzte Jost, gesperrt, in Versalien. */
 .tag {
   display: inline-block;
   font-family: var(--sans);
-  font-variation-settings: "wdth" 125, "wght" 600;
-  font-size: 0.6875rem;
+  font-variation-settings: "wght" 500;
+  font-size: 0.75rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--bronze);
@@ -443,7 +447,7 @@ a:hover { color: var(--espresso); }
   font-family: var(--display);
   font-weight: 400;
   text-transform: lowercase;
-  font-size: 1.1875rem;
+  font-size: 1.5rem;
   line-height: 1.15;
   letter-spacing: -0.01em;
   margin: 0;
@@ -633,62 +637,117 @@ a:hover { color: var(--espresso); }
 .band-dark .facts dt { color: var(--taupe); }
 
 /* ========================================= Standortauswahl
-   Zwei gleichwertige, grosse Auswahlflaechen statt einer Dropdown-Liste.
-   Keine Kartenoptik: nur Bildflaeche und Name, die ganze Flaeche ist der
-   Link. */
+   Zwei gleichwertige Foto-Flächen, auf jeder Breite nebeneinander (auch auf
+   dem Handy, ohne Scrollen). Name und Studio-Label liegen unten im Bild, die
+   ganze Fläche ist der Link. Dieselben Flächen erscheinen als Pflicht-Popup
+   (.gate), wenn jemand ohne Standortwahl direkt auf einer Unterseite landet. */
 .picker-page {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-block: var(--s6);
+  padding-block: var(--s4) var(--s5);
 }
-.picker-intro { text-align: center; margin-bottom: var(--s6); }
-.picker-intro .t-1 { max-width: 16ch; margin-inline: auto; }
-.picker-intro .lede { margin-inline: auto; margin-top: var(--s3); max-width: 42ch; }
+.picker-intro {
+  text-align: center;
+  margin-bottom: var(--s4);
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+}
+.picker-intro .t-2 { max-width: 18ch; }
 
 .picker {
   display: grid;
-  gap: var(--s4);
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
 }
-@media (min-width: 56rem) {
-  .picker { grid-template-columns: repeat(2, 1fr); gap: var(--s5); }
+@media (min-width: 40rem) {
+  .picker { gap: 1.5rem; }
 }
+
 .picker-tile {
+  position: relative;
   display: block;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  isolation: isolate;
   text-decoration: none;
-  color: inherit;
+  color: var(--chalk);
+  background: var(--espresso);
+  border-radius: 2px;
 }
-.picker-tile:hover .picker-figure .figure-frame,
-.picker-tile:focus-visible .picker-figure .figure-frame {
-  border-color: var(--bronze);
+.picker-tile:hover { color: var(--chalk); }
+@media (min-width: 56rem) {
+  .picker-tile { aspect-ratio: 4 / 5; }
 }
-.picker-figure .figure-frame { transition: border-color 200ms ease; }
+.picker-bild { position: absolute; inset: 0; z-index: -2; }
+.picker-bild img { transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1); }
 @media (prefers-reduced-motion: no-preference) {
-  .picker-figure .figure-frame { transition: border-color 200ms ease, transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1); }
-  .picker-tile:hover .picker-figure .figure-frame,
-  .picker-tile:focus-visible .picker-figure .figure-frame { transform: scale(1.018); }
+  .picker-tile:hover .picker-bild img,
+  .picker-tile:focus-visible .picker-bild img { transform: scale(1.045); }
+}
+.picker-tile::after {
+  content: "";
+  position: absolute; inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(28, 19, 10, 0.86) 0%, rgba(28, 19, 10, 0.2) 52%, rgba(28, 19, 10, 0) 100%);
 }
 .picker-label {
-  display: block;
-  margin-top: var(--s3);
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: grid;
+  gap: 0.2rem;
+  padding: clamp(0.8rem, 3vw, 1.75rem);
+}
+.picker-kicker {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--taupe);
 }
 .picker-name {
-  display: block;
   font-family: var(--display);
-  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  font-weight: 500;
+  font-size: clamp(1.7rem, 1rem + 3.2vw, 3.1rem);
+  line-height: 1;
   text-transform: lowercase;
-  letter-spacing: -0.015em;
 }
 .picker-hinweis {
-  display: block;
-  margin-top: 0.5em;
-  font-variation-settings: "wdth" 112, "wght" 500;
-  font-size: 0.75rem; letter-spacing: 0.06em;
-  color: var(--sepia);
-  max-width: 34ch;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--taupe);
 }
+
+/* Pflicht-Popup. Sichtbar nur, solange <html> kein data-standort-ok trägt,
+   das setzt das Skript im Seitenkopf (siehe layout.tsx). */
+.gate { display: none; }
+.js:not([data-standort-ok]) .gate {
+  display: flex;
+  position: fixed; inset: 0;
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s3) var(--gut);
+  background: var(--paper);
+  overflow-y: auto;
+}
+.js:not([data-standort-ok]) body:has(.gate) { overflow: hidden; }
+.gate-innen {
+  width: 100%;
+  max-width: 56rem;
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+  text-align: center;
+}
+.gate-innen > div { width: 100%; }
+.gate-logo { height: 3rem; width: auto; }
+.gate-titel { max-width: 18ch; }
 
 /* ------------------------------------------------------- Fuss */
 .foot { background: var(--espresso); color: var(--chalk); padding-block: var(--s5) var(--s4); }
@@ -807,70 +866,22 @@ textarea.input {
 .pill-off { color: var(--sepia); }
 .pill-standort { color: var(--bronze); border-color: var(--bronze); }
 
-/* ----------------------------------------- Kursplan, Wochenkalender */
+/* ----------------------------------------- Kursplan: Tagesleiste und Liste
+   Ablauf: Standort wählen, Tag antippen, darunter stehen alle Termine dieses
+   Tages. Weitere Filter liegen hinter dem Filtersymbol. */
 .btn-klein {
   min-height: 38px;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
 }
 
-.kalender-kopf {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s3);
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--s4);
-}
-
-.kalender-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-}
-
-.kalender-pfeil {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  font-size: 1.1rem;
-  line-height: 1;
-  background: var(--paper);
-  border: 1px solid var(--taupe);
-  border-radius: 999px;
-  color: var(--espresso);
-  cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
-}
-.kalender-pfeil:hover:not(:disabled) { background: var(--paper-2); border-color: var(--bronze); }
-.kalender-pfeil:disabled { opacity: 0.35; cursor: not-allowed; }
-
-.kalender-woche {
-  font-family: var(--sans);
-  font-variation-settings: "wdth" 110, "wght" 600;
-  font-size: 0.9375rem;
-  min-width: 13ch;
-  text-align: center;
-}
-
-.kalender-heute { white-space: nowrap; }
-
-.kalender-standorte {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s1);
-  margin-bottom: var(--s3);
-}
-
 .pill-filter {
   font-family: var(--sans);
-  font-variation-settings: "wdth" 112, "wght" 600;
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  padding: 0.45rem 0.95rem;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  min-height: 44px;
+  padding: 0.5rem 1.05rem;
   border-radius: 999px;
   border: 1px solid var(--taupe);
   background: var(--paper);
@@ -885,68 +896,298 @@ textarea.input {
   color: var(--chalk);
 }
 
-.kalender-filter {
+.kalender-pfeil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+  line-height: 1;
+  background: var(--paper);
+  border: 1px solid var(--taupe);
+  border-radius: 999px;
+  color: var(--espresso);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.kalender-pfeil:hover:not(:disabled) { background: var(--paper-2); border-color: var(--bronze); }
+.kalender-pfeil:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.plan { display: grid; gap: var(--s3); }
+.plan-kopf { display: grid; gap: var(--s2); margin-bottom: var(--s3); }
+@media (min-width: 48rem) {
+  .plan-kopf { grid-template-columns: 1fr 1fr; align-items: end; gap: var(--s4); }
+}
+.plan-kopf-text { max-width: 44ch; }
+
+.plan-standorte {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--s2);
 }
-.kalender-filter .input { width: auto; min-width: 9rem; }
-.kalender-filter input[type="search"] { min-width: 12rem; }
+.plan-pills { display: flex; flex-wrap: wrap; gap: var(--s1); }
 
-.kalender-grid {
+.plan-filter-wrap { position: relative; flex: none; }
+.plan-filter-knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--taupe);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--espresso);
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.plan-filter-knopf:hover,
+.plan-filter-knopf-offen { border-color: var(--bronze); background: var(--paper-2); }
+.plan-filter-zahl {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: var(--espresso);
+  color: var(--chalk);
+  font-size: 0.6875rem;
+}
+@media (max-width: 30rem) {
+  .plan-filter-text { display: none; }
+  .plan-filter-knopf { padding: 0 0.7rem; }
+}
+.plan-filter-feld {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 30;
+  width: min(22rem, calc(100vw - 2 * var(--gut)));
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--paper);
+  border: 1px solid var(--taupe);
+  box-shadow: 0 14px 34px rgba(60, 44, 25, 0.16);
+}
+.plan-filter-aktionen { display: flex; align-items: center; gap: var(--s3); }
+
+.plan-woche { display: flex; align-items: center; gap: var(--s2); }
+.plan-woche-text {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  min-width: 12ch;
+  text-align: center;
+}
+.plan-heute { white-space: nowrap; }
+
+.plan-tage {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--s2);
-  align-items: start;
-  overflow-x: auto;
+  gap: 0.25rem;
 }
-
-@media (max-width: 860px) {
-  .kalender-grid { grid-template-columns: 1fr; }
-  .kalender-tag + .kalender-tag { border-top: 1px solid var(--taupe); padding-top: var(--s3); margin-top: var(--s1); }
+@media (min-width: 40rem) {
+  .plan-tage { gap: 0.6rem; }
 }
-
-.kalender-tag {
+.plan-tag {
   display: grid;
-  gap: var(--s2);
-  min-width: 0;
-}
-
-.kalender-tag-kopf {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4em;
-  padding-bottom: 0.4em;
-  border-bottom: 1px solid var(--taupe);
-}
-.kalender-tag-name {
-  font-family: var(--sans);
-  font-variation-settings: "wdth" 125, "wght" 600;
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--sepia);
-}
-.kalender-tag-nummer {
-  font-family: var(--display);
-  font-size: 1.1rem;
-}
-
-.kalender-karten { display: grid; gap: var(--s2); }
-.kalender-leer { padding: 0.3em 0; }
-
-.kurs-karte {
+  justify-items: center;
+  align-content: center;
+  gap: 0.1rem;
+  min-height: 70px;
+  padding: 0.5rem 0.1rem 0.4rem;
   border: 1px solid var(--taupe);
   border-radius: 3px;
-  padding: var(--s2);
-  background: var(--paper-2);
-  display: grid;
-  gap: 0.35em;
+  background: var(--paper);
+  color: var(--espresso);
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
-.kurs-karte-titel { margin: 0; }
-.kurs-karte-zeit { margin: 0; color: var(--espresso); }
-.kurs-karte-standort, .kurs-karte-niveau { justify-self: start; }
-.kurs-karte-trainer, .kurs-karte-plaetze { margin: 0; }
-.kurs-karte-status { margin: 0; color: var(--sepia); font-style: italic; }
-.kurs-karte-formular { display: grid; gap: 0.5em; }
-.kurs-karte-formular .form { gap: 0.6em; }
+.plan-tag:hover { border-color: var(--bronze); }
+.plan-tag-aktiv {
+  background: var(--espresso);
+  border-color: var(--espresso);
+  color: var(--chalk);
+}
+.plan-tag-aktiv:hover { border-color: var(--espresso); }
+.plan-tag-leer:not(.plan-tag-aktiv) { opacity: 0.5; }
+.plan-tag-name {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.plan-tag-nummer {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.plan-tag-punkte {
+  min-height: 1em;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: var(--bronze);
+}
+.plan-tag-aktiv .plan-tag-punkte { color: var(--taupe); }
+
+.plan-tag-titel { margin-top: var(--s2); }
+.plan-leer { margin: 0; }
+
+.plan-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.plan-termin {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: start;
+  padding: var(--s2);
+  border: 1px solid var(--taupe);
+  border-radius: 3px;
+  background: var(--paper-2);
+}
+.plan-termin-aktion { grid-column: 1 / -1; }
+@media (min-width: 48rem) {
+  .plan-termin {
+    grid-template-columns: 6rem minmax(0, 1fr) auto;
+    align-items: center;
+    padding: var(--s2) var(--s3);
+  }
+  .plan-termin-aktion { grid-column: auto; justify-self: end; min-width: 13rem; }
+}
+.plan-termin-start {
+  display: block;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.85rem;
+  line-height: 1;
+}
+.plan-termin-ende { display: block; margin-top: 0.2rem; font-size: 0.8125rem; color: var(--sepia); }
+.plan-termin-titel {
+  margin: 0 0 0.35rem;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.55rem;
+  line-height: 1.08;
+}
+.plan-termin-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.7rem; margin: 0; }
+.plan-status { margin: 0; color: var(--sepia); font-style: italic; }
+.plan-formular { display: grid; gap: 0.6rem; }
+.plan-buchen { display: grid; gap: 0.6rem; }
+.plan-wahl { border: 0; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
+.plan-wahl legend { padding: 0; margin-bottom: 0.2rem; }
+.plan-wahl-zeile { display: flex; align-items: center; gap: 0.55rem; min-height: 40px; cursor: pointer; font-size: 0.9375rem; }
+.plan-wahl-zeile input { width: 1.1rem; height: 1.1rem; accent-color: var(--espresso); }
+
+/* ---------------------------------------- Credits, Kasse, Gutschein */
+.credits-pakete {
+  display: grid;
+  gap: var(--s3);
+  margin-top: var(--s3);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 40rem) {
+  .credits-pakete { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.credits-paket {
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  padding: var(--s4) var(--s3);
+  border: 1px solid var(--taupe);
+  border-radius: 3px;
+  background: var(--paper);
+}
+.credits-paket-name { margin: 0; }
+.credits-paket-preis {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 2.2rem;
+  line-height: 1;
+}
+.credits-paket-liste { margin: 0 0 var(--s2); }
+.credits-paket .btn { justify-self: start; }
+
+.kasse-raster { display: grid; gap: var(--s4); grid-template-columns: 1fr; }
+@media (min-width: 56rem) {
+  .kasse-raster { grid-template-columns: 1fr 1fr; gap: var(--s5); align-items: start; }
+}
+.kasse-spalte { display: grid; gap: var(--s2); align-content: start; }
+.kasse-gutschein { display: grid; gap: 0.4rem; margin-top: var(--s2); }
+.kasse-gutschein label { font-size: 0.875rem; color: var(--sepia); }
+.kasse-gutschein-zeile { display: flex; gap: var(--s1); }
+.kasse-gutschein-zeile .input { text-transform: uppercase; }
+.kasse-summe { display: grid; gap: 0.5rem; margin: 0; }
+.kasse-summe > div { display: flex; justify-content: space-between; gap: var(--s2); }
+.kasse-summe dt, .kasse-summe dd { margin: 0; }
+.kasse-summe-gesamt {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--espresso);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.6rem;
+}
+
+.gutschein-betraege { border: 0; padding: 0; margin: 0; display: grid; gap: var(--s2); }
+.gutschein-betraege legend { padding: 0; margin-bottom: 0.4rem; font-size: 0.875rem; color: var(--sepia); }
+.gutschein-betraege-reihe { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.gutschein-betrag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 1.2rem;
+  border: 1px solid var(--taupe);
+  border-radius: 999px;
+  background: var(--paper);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.gutschein-betrag input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.gutschein-betrag:hover { border-color: var(--bronze); }
+.gutschein-betrag:focus-within { outline: 2px solid var(--bronze); outline-offset: 2px; }
+.gutschein-betrag-aktiv { background: var(--espresso); border-color: var(--espresso); color: var(--chalk); }
+
+.hinweis-test {
+  display: inline-block;
+  margin: 0;
+  padding: 0.55em 0.85em;
+  background: var(--flag);
+  color: var(--espresso);
+  font-size: 0.875rem;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------- Admin */
+.admin-nav { flex-wrap: wrap; }
+.admin-nutzer { padding-inline: var(--s1); }
+.umsatz-kachel {
+  display: grid;
+  gap: 0.3rem;
+  width: fit-content;
+  margin-bottom: var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--taupe);
+  border-radius: 3px;
+  background: var(--paper-2);
+  color: var(--espresso);
+  text-decoration: none;
+}
+.umsatz-kachel:hover { border-color: var(--bronze); color: var(--espresso); }
+.umsatz-kachel-zahl, .umsatz-gross-zahl {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 2.6rem;
+  line-height: 1;
+}
+.umsatz-gross { display: grid; gap: 0.3rem; margin: var(--s4) 0 0; }

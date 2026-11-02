@@ -1,8 +1,14 @@
 import { notFound } from "next/navigation";
 import { getTerminMitBuchungen } from "@/lib/repositories/kurstermine";
+import { getMitarbeiter } from "@/lib/auth/admin";
 import { formatDatumUhrzeit } from "@/lib/format";
 import ActionButton from "@/components/forms/ActionButton";
-import { adminStornierenAction, kursAusfallenLassenAction, noShowMarkierenAction } from "@/lib/actions/admin";
+import {
+  adminStornierenAction,
+  anwesendMarkierenAction,
+  kursAusfallenLassenAction,
+  noShowMarkierenAction,
+} from "@/lib/actions/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +17,25 @@ const STATUS_LABEL: Record<string, string> = {
   WARTELISTE: "warteliste",
   STORNIERT: "storniert",
   NO_SHOW: "nicht erschienen",
+  ANWESEND: "anwesend",
 };
 
 export default async function AdminTerminDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const termin = await getTerminMitBuchungen(id);
   if (!termin) notFound();
+
+  const mitarbeiter = await getMitarbeiter();
+  const istAdmin = mitarbeiter?.rolle === "ADMIN";
+
+  // Aktive Buchungen zuerst, dann Warteliste nach Position, Stornierte zuletzt.
+  const reihenfolge = (s: string) => (s === "GEBUCHT" || s === "ANWESEND" || s === "NO_SHOW" ? 0 : s === "WARTELISTE" ? 1 : 2);
+  const buchungen = [...termin.buchungen].sort(
+    (a, b) =>
+      reihenfolge(a.status) - reihenfolge(b.status) ||
+      (a.wartelistePosition ?? 0) - (b.wartelistePosition ?? 0) ||
+      a.createdAt.getTime() - b.createdAt.getTime(),
+  );
 
   return (
     <section className="band band-tight">
@@ -29,7 +48,7 @@ export default async function AdminTerminDetailPage({ params }: { params: Promis
           {termin.status === "AUSGEFALLEN" ? "ausgefallen" : "aktiv"}
         </p>
 
-        {termin.status === "AKTIV" ? (
+        {istAdmin && termin.status === "AKTIV" ? (
           <div style={{ marginTop: "var(--s3)" }}>
             <ActionButton
               label="Kurs ausfallen lassen (automatische Gutschrift an alle)"
@@ -44,41 +63,48 @@ export default async function AdminTerminDetailPage({ params }: { params: Promis
             <thead>
               <tr>
                 <th>Kunde</th>
-                <th>E-Mail</th>
+                {istAdmin ? <th>E-Mail</th> : null}
                 <th>Status</th>
-                <th>Zahlungsart</th>
+                <th>Bezahlt mit</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {termin.buchungen.length === 0 ? (
+              {buchungen.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>Noch keine Buchung.</td>
+                  <td colSpan={istAdmin ? 5 : 4}>Noch keine Buchung.</td>
                 </tr>
               ) : (
-                termin.buchungen.map((b) => (
+                buchungen.map((b) => (
                   <tr key={b.id}>
                     <td>{b.kunde.name}</td>
-                    <td>{b.kunde.email}</td>
+                    {istAdmin ? <td>{b.kunde.email}</td> : null}
                     <td>
                       {STATUS_LABEL[b.status] ?? b.status}
                       {b.status === "WARTELISTE" ? `, Position ${b.wartelistePosition ?? "?"}` : ""}
                     </td>
-                    <td>{b.zahlungsart === "KARTE" ? "Karte" : "Einzelzahlung"}</td>
+                    <td>{b.status === "WARTELISTE" ? "noch offen" : b.zahlungsart === "KARTE" ? "Credits" : "Einzelstunde"}</td>
                     <td style={{ display: "flex", gap: "0.6em", flexWrap: "wrap" }}>
-                      {b.status === "GEBUCHT" ? (
-                        <>
-                          <ActionButton
-                            label="No-Show"
-                            bestaetigung="Als No-Show markieren? Die Einheit verfällt ersatzlos."
-                            action={noShowMarkierenAction.bind(null, b.id)}
-                          />
-                          <ActionButton
-                            label="Kulanz-Storno"
-                            bestaetigung="Trotz abgelaufener Frist stornieren und Gutschrift erteilen?"
-                            action={adminStornierenAction.bind(null, b.id)}
-                          />
-                        </>
+                      {b.status === "GEBUCHT" || b.status === "NO_SHOW" ? (
+                        <ActionButton
+                          label="Anwesend"
+                          className="btn btn-klein"
+                          action={anwesendMarkierenAction.bind(null, b.id)}
+                        />
+                      ) : null}
+                      {b.status === "GEBUCHT" || b.status === "ANWESEND" ? (
+                        <ActionButton
+                          label="No-Show"
+                          bestaetigung="Als No-Show markieren? Der Credit verfällt ersatzlos."
+                          action={noShowMarkierenAction.bind(null, b.id)}
+                        />
+                      ) : null}
+                      {istAdmin && b.status === "GEBUCHT" ? (
+                        <ActionButton
+                          label="Kulanz-Storno"
+                          bestaetigung="Trotz abgelaufener Frist stornieren und Gutschrift erteilen?"
+                          action={adminStornierenAction.bind(null, b.id)}
+                        />
                       ) : null}
                     </td>
                   </tr>

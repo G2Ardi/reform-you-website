@@ -76,7 +76,7 @@ export async function getAlleKommendenTermine() {
 }
 
 export function zaehleGebuchtePlaetze(buchungen: { status: string }[]): number {
-  return buchungen.filter((b) => b.status === "GEBUCHT").length;
+  return buchungen.filter((b) => b.status === "GEBUCHT" || b.status === "ANWESEND").length;
 }
 
 export function freiePlaetze(termin: { kapazitaet: number; buchungen: { status: string }[] }): number {
@@ -88,18 +88,4 @@ export function istNochBuchbar(beginn: Date, minutenVorher = 15): boolean {
   return new Date() < spaetesteBuchung;
 }
 
-/** Umbuchen-Ziele: dasselbe Kursformat (per Slug), an beiden Standorten,
- * weil eine Karte ebenfalls standortübergreifend gilt. */
-export async function getUmbuchOptionen(kursSlug: string, ausgeschlosseneTerminId: string) {
-  return prisma.kursTermin.findMany({
-    where: {
-      kurs: { slug: kursSlug },
-      status: "AKTIV",
-      beginn: { gte: new Date() },
-      id: { not: ausgeschlosseneTerminId },
-    },
-    include: MIT_BEZUG,
-    orderBy: { beginn: "asc" },
-  });
-}
 

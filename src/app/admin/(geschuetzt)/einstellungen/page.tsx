@@ -1,10 +1,12 @@
 import ActionForm from "@/components/forms/ActionForm";
 import { getEinstellungen } from "@/lib/repositories/einstellungen";
 import { einstellungenSpeichernAction } from "@/lib/actions/admin";
+import { erzwingeAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminEinstellungenPage() {
+  await erzwingeAdmin();
   const einstellungen = await getEinstellungen();
 
   return (

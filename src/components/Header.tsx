@@ -44,7 +44,8 @@ export default function Header({ standort = null, solid = false, bookingUrl }: H
   const navLinks = standort
     ? [
         { href: `/${standort.slug}/kurse`, label: "Kurse" },
-        { href: `/${standort.slug}/abo`, label: "Abo & Preise" },
+        { href: `/${standort.slug}/credits`, label: "Credits" },
+        { href: `/${standort.slug}/gutschein`, label: "Gutschein" },
         { href: `/${standort.slug}/studio`, label: "Studio" },
         { href: `/${standort.slug}/kontakt`, label: "Kontakt" },
       ]
@@ -108,7 +109,7 @@ export default function Header({ standort = null, solid = false, bookingUrl }: H
         /* Immer sichtbare Standortwahl direkt in der Kopfzeile, nicht hinter
            dem Burger-Menü versteckt, das war auf dem Handy zu unintuitiv. */
         <div className="shell head-quickbar">
-          <Link href="/?wahl=1" className="head-quickbar-link">
+          <Link href="/" className="head-quickbar-link">
             <span className="head-quickbar-label">Standort</span>
             <span className="head-quickbar-name">{standort.name}</span>
             <span className="head-quickbar-arrow" aria-hidden="true">wechseln ›</span>

@@ -23,18 +23,21 @@ export default function UmbuchenForm({
   ) => Promise<AktionsErgebnis | null>;
 
   if (optionen.length === 0) {
-    return <p className="small muted">Aktuell kein anderer Termin dieses Kurses verfügbar.</p>;
+    return <p className="small muted">Aktuell ist kein anderer Termin mit freiem Platz verfügbar.</p>;
   }
 
   return (
-    <ActionForm action={action} initialState={null} submitLabel="Umbuchen" className="form-row-inline">
-      <select className="input" name="neuerKursTerminId" required style={{ maxWidth: "20rem" }}>
-        {optionen.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+    <ActionForm action={action} initialState={null} submitLabel="Verschieben" className="form">
+      <div className="form-row">
+        <label htmlFor={`neu-${buchungId}`}>Neuen Kurs wählen</label>
+        <select className="input" id={`neu-${buchungId}`} name="neuerKursTerminId" required>
+          {optionen.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
     </ActionForm>
   );
 }

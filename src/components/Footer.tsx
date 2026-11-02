@@ -70,7 +70,7 @@ export default function Footer({ standort, bookingUrl }: FooterProps) {
                 <Link href={`${basis}/kurse`}>Kurse</Link>
               </li>
               <li>
-                <Link href={`${basis}/abo`}>Abo &amp; Preise</Link>
+                <Link href={`${basis}/credits`}>Credits</Link>
               </li>
               <li>
                 <Link href={`${basis}/studio`}>Studio</Link>
@@ -90,7 +90,7 @@ export default function Footer({ standort, bookingUrl }: FooterProps) {
                 <Link href={`${basis}/konto/profil`}>Mein Konto</Link>
               </li>
               <li>
-                <Link href={`${basis}/abo#geschenkkarte`}>Geschenkkarte</Link>
+                <Link href={`${basis}/gutschein`}>Gutschein</Link>
               </li>
             </ul>
           </div>

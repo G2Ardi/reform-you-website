@@ -1,17 +1,16 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import Header from "@/components/Header";
 import Reveal from "@/components/Reveal";
-import Flag from "@/components/Flag";
 import StornoButton from "@/components/forms/StornoButton";
-import UmbuchenForm from "@/components/forms/UmbuchenForm";
 import { getStandortBySlug } from "@/lib/repositories/standorte";
 import { getEingeloggterKunde } from "@/lib/auth/session";
 import { logoutAction } from "@/lib/actions/auth";
-import { getBuchungenFuerKunde } from "@/lib/repositories/buchungen";
+import { getBuchungenFuerKunde, stornoFristEnde } from "@/lib/repositories/buchungen";
 import { getAlleKartenFuerKunde } from "@/lib/repositories/karten";
 import { getEinstellungen } from "@/lib/repositories/einstellungen";
-import { getUmbuchOptionen } from "@/lib/repositories/kurstermine";
 import { formatDatumUhrzeit } from "@/lib/format";
+import { formatDatumKurz, kartenLabel } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
 
@@ -20,20 +19,18 @@ const STATUS_LABEL: Record<string, string> = {
   WARTELISTE: "warteliste",
   STORNIERT: "storniert",
   NO_SHOW: "nicht erschienen",
-};
-
-const KARTE_LABEL: Record<string, string> = {
-  FUENFER: "5er-Karte",
-  ZEHNER: "10er-Karte",
-  GUTHABEN: "Guthaben",
+  ANWESEND: "teilgenommen",
 };
 
 export default async function ProfilPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ standort: string }>;
+  searchParams: Promise<{ neu?: string }>;
 }) {
   const { standort: slug } = await params;
+  const { neu } = await searchParams;
   const standort = await getStandortBySlug(slug);
   if (!standort) notFound();
 
@@ -45,6 +42,8 @@ export default async function ProfilPage({
     getAlleKartenFuerKunde(kunde.id),
     getEinstellungen(),
   ]);
+
+  const jetzt = new Date();
 
   return (
     <>
@@ -66,29 +65,42 @@ export default async function ProfilPage({
                 </form>
               </div>
             </Reveal>
+            {neu === "credits" ? (
+              <p className="form-erfolg" style={{ marginTop: "var(--s3)", maxWidth: "36rem" }}>
+                Kauf abgeschlossen. Deine Credits sind unten aufgeführt, eine Bestätigung kommt per E-Mail.
+              </p>
+            ) : null}
+            {neu === "buchung" ? (
+              <p className="form-erfolg" style={{ marginTop: "var(--s3)", maxWidth: "36rem" }}>
+                Gebucht. Du bekommst gleich eine Bestätigung per E-Mail.
+              </p>
+            ) : null}
           </div>
         </section>
 
         <section className="band band-tight band-sunk">
           <div className="shell">
             <Reveal>
-              <h2 className="t-3">ihre karten</h2>
+              <h2 className="t-3">deine credits</h2>
             </Reveal>
             {karten.length === 0 ? (
               <p className="muted" style={{ marginTop: "var(--s3)" }}>
-                Noch keine Karte. Eine 5er- oder 10er-Karte gilt an beiden Standorten.
+                Noch keine Credits.{" "}
+                <Link className="go" href={`/${standort.slug}/credits`}>
+                  Credits kaufen
+                </Link>
               </p>
             ) : (
               <div style={{ marginTop: "var(--s3)" }}>
                 {karten.map((k) => (
                   <div className="card" key={k.id}>
-                    <strong>{KARTE_LABEL[k.typ]}</strong>
+                    <strong>{kartenLabel(k.typ)}</strong>
                     <span>
-                      {k.einheitenRest} von {k.einheitenGesamt} Einheiten übrig
+                      {k.einheitenRest} von {k.einheitenGesamt} Credits übrig
                     </span>
                     <span className="small muted">
-                      gültig bis {k.gueltigBis.toLocaleDateString("de-DE")}
-                      {k.gueltigBis < new Date() ? " (abgelaufen)" : ""}
+                      gültig bis {formatDatumKurz(k.gueltigBis)}
+                      {k.gueltigBis < jetzt ? " (abgelaufen)" : ""}
                     </span>
                     {k.notiz ? <span className="small muted">{k.notiz}</span> : null}
                   </div>
@@ -96,7 +108,7 @@ export default async function ProfilPage({
               </div>
             )}
             <p className="small muted" style={{ marginTop: "var(--s3)" }}>
-              Pausieren einer Karte ist aktuell nicht vorgesehen. <Flag>Von Janina nicht bestätigt</Flag>
+              Credits gelten an beiden Standorten. Pausieren ist nicht vorgesehen.
             </p>
           </div>
         </section>
@@ -104,56 +116,58 @@ export default async function ProfilPage({
         <section className="band">
           <div className="shell">
             <Reveal>
-              <h2 className="t-3">ihre buchungen</h2>
+              <h2 className="t-3">deine buchungen</h2>
             </Reveal>
             {buchungen.length === 0 ? (
               <p className="muted" style={{ marginTop: "var(--s3)" }}>
-                Noch keine Buchung. <a className="go" href={`/${standort.slug}/buchen`}>Jetzt einen Termin buchen</a>
+                Noch keine Buchung.{" "}
+                <Link className="go" href={`/${standort.slug}/buchen`}>
+                  Jetzt einen Termin buchen
+                </Link>
               </p>
             ) : (
               <div style={{ marginTop: "var(--s3)" }}>
-                {await Promise.all(
-                  buchungen.map(async (b) => {
-                    const fristEnde = new Date(
-                      b.kursTermin.beginn.getTime() - einstellungen.stornoFristStunden * 60 * 60 * 1000,
-                    );
-                    const nochStornierbar = b.status === "GEBUCHT" && new Date() < fristEnde;
-                    const nochUmbuchbar = nochStornierbar;
+                {buchungen.map((b) => {
+                  const fristEnde = stornoFristEnde(b.kursTermin.beginn, einstellungen.stornoFristStunden);
+                  const nachFrist = jetzt >= fristEnde;
+                  const bevorstehend = b.kursTermin.beginn > jetzt;
+                  const aktiv = b.status === "GEBUCHT" || b.status === "WARTELISTE";
 
-                    const optionen = nochUmbuchbar
-                      ? (await getUmbuchOptionen(b.kursTermin.kurs.slug, b.kursTermin.id)).map((t) => ({
-                          id: t.id,
-                          label: `${t.standort.name}, ${formatDatumUhrzeit(t.beginn)} Uhr`,
-                        }))
-                      : [];
-
-                    return (
-                      <div className="card" key={b.id}>
-                        <strong>
-                          {b.kursTermin.kurs.name} · {b.kursTermin.standort.name}
-                        </strong>
-                        <span>{formatDatumUhrzeit(b.kursTermin.beginn)} Uhr</span>
-                        <span className="small">
-                          Status: {STATUS_LABEL[b.status] ?? b.status}
-                          {b.status === "WARTELISTE" ? `, Position ${b.wartelistePosition ?? "?"}` : ""}
-                        </span>
-                        {b.status === "GEBUCHT" && !nochStornierbar ? (
-                          <span className="small muted">nicht mehr stornierbar</span>
-                        ) : null}
-                        {nochStornierbar ? (
-                          <div className="btns" style={{ marginTop: "0.4em" }}>
-                            <StornoButton standortSlug={standort.slug} buchungId={b.id} />
+                  return (
+                    <div className="card" key={b.id}>
+                      <strong>
+                        {b.kursTermin.kurs.name} · {b.kursTermin.standort.name}
+                      </strong>
+                      <span>{formatDatumUhrzeit(b.kursTermin.beginn)} Uhr</span>
+                      <span className="small">
+                        Status: {STATUS_LABEL[b.status] ?? b.status}
+                        {b.status === "WARTELISTE" ? `, Position ${b.wartelistePosition ?? "?"}` : ""}
+                      </span>
+                      {aktiv && bevorstehend ? (
+                        <>
+                          {b.status === "GEBUCHT" && nachFrist ? (
+                            <span className="small muted">
+                              Stornofrist abgelaufen, Stornieren geht noch, aber ohne Gutschrift.
+                            </span>
+                          ) : null}
+                          <div className="btns" style={{ marginTop: "0.4em", alignItems: "center" }}>
+                            <StornoButton
+                              standortSlug={standort.slug}
+                              buchungId={b.id}
+                              nachFrist={b.status === "GEBUCHT" && nachFrist}
+                              warteliste={b.status === "WARTELISTE"}
+                            />
+                            {b.status === "GEBUCHT" && !nachFrist ? (
+                              <Link className="go small" href={`/${standort.slug}/konto/buchung/${b.id}`}>
+                                Verschieben
+                              </Link>
+                            ) : null}
                           </div>
-                        ) : null}
-                        {nochUmbuchbar ? (
-                          <div style={{ marginTop: "0.4em" }}>
-                            <UmbuchenForm standortSlug={standort.slug} buchungId={b.id} optionen={optionen} />
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  }),
-                )}
+                        </>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

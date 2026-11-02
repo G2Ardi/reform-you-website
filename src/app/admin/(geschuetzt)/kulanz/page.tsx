@@ -1,15 +1,19 @@
 import ActionForm from "@/components/forms/ActionForm";
 import { kulanzAction } from "@/lib/actions/admin";
+import { erzwingeAdmin } from "@/lib/auth/admin";
+import { CREDITS_KATALOG } from "@/lib/credits";
+import { formatPreis } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminKulanzPage() {
+export default async function AdminKulanzPage() {
+  await erzwingeAdmin();
   return (
     <section className="band band-tight">
       <div className="shell">
         <h1 className="t-2">kulanz</h1>
         <p className="muted" style={{ maxWidth: "40rem" }}>
-          Freitext-Werkzeug für Ausnahmen außerhalb der normalen Regeln: eine Einheit oder Karte manuell
+          Freitext-Werkzeug für Ausnahmen außerhalb der normalen Regeln: Credits manuell
           gutschreiben, unabhängig von Stornofristen. Nicht hübsch, aber funktional.
         </p>
         <div style={{ marginTop: "var(--s4)" }}>
@@ -21,10 +25,10 @@ export default function AdminKulanzPage() {
             <div className="form-row">
               <label htmlFor="aktion">Aktion</label>
               <select className="input" id="aktion" name="aktion" required>
-                <option value="guthaben-1">1 Einheit Guthaben gutschreiben</option>
-                <option value="guthaben-5">5 Einheiten Guthaben gutschreiben</option>
-                <option value="karte-5er">5er-Karte gutschreiben (120€, 3 Monate)</option>
-                <option value="karte-10er">10er-Karte gutschreiben (220€, 6 Monate)</option>
+                <option value="guthaben-1">1 Credit Guthaben gutschreiben</option>
+                <option value="guthaben-5">5 Credits Guthaben gutschreiben</option>
+                <option value="karte-5er">{`${CREDITS_KATALOG.FUENFER.label} gutschreiben (${CREDITS_KATALOG.FUENFER.laufzeitMonate} Monate, Wert ${formatPreis(CREDITS_KATALOG.FUENFER.preisCent)})`}</option>
+                <option value="karte-10er">{`${CREDITS_KATALOG.ZEHNER.label} gutschreiben (${CREDITS_KATALOG.ZEHNER.laufzeitMonate} Monate, Wert ${formatPreis(CREDITS_KATALOG.ZEHNER.preisCent)})`}</option>
               </select>
             </div>
             <div className="form-row">

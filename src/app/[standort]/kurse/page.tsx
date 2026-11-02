@@ -83,7 +83,7 @@ export default async function KursePage({
                         <p>{kurs.beschreibung}</p>
                         <p className="small muted">
                           {formatPreis(kurs.preisEinzelCent)} pro Einzelstunde, {mwstHinweis()}
-                          {kurs.karteGueltig ? " · einlösbar mit 5er- oder 10er-Karte" : ""}
+                          {kurs.karteGueltig ? " · einlösbar mit Credits" : ""}
                           {kurs.karteGueltigOffen ? (
                             <>
                               {" "}

@@ -11,15 +11,19 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ standort: string }>;
+  searchParams: Promise<{ weiter?: string }>;
 }) {
   const { standort: slug } = await params;
+  const { weiter } = await searchParams;
+  const zielPfad = weiter && weiter.startsWith("/") && !weiter.startsWith("//") && !weiter.includes("\\") ? weiter : null;
   const standort = await getStandortBySlug(slug);
   if (!standort) notFound();
 
   const kunde = await getEingeloggterKunde();
-  if (kunde) redirect(`/${standort.slug}/konto/profil`);
+  if (kunde) redirect(zielPfad ?? `/${standort.slug}/konto/profil`);
 
   const action = loginAction.bind(null, standort.slug) as (
     vorher: FormularFehler | null,
@@ -43,6 +47,7 @@ export default async function LoginPage({
         <section className="band band-tight band-sunk">
           <div className="shell">
             <ActionForm action={action} initialState={null} submitLabel="Einloggen">
+              {zielPfad ? <input type="hidden" name="weiter" value={zielPfad} /> : null}
               <div className="form-row">
                 <label htmlFor="email">E-Mail</label>
                 <input className="input" id="email" name="email" type="email" required />
@@ -54,7 +59,7 @@ export default async function LoginPage({
             </ActionForm>
             <p className="small muted" style={{ marginTop: "var(--s3)" }}>
               Noch kein Konto?{" "}
-              <Link className="go" href={`/${standort.slug}/konto/registrieren`}>
+              <Link className="go" href={`/${standort.slug}/konto/registrieren${zielPfad ? `?weiter=${encodeURIComponent(zielPfad)}` : ""}`}>
                 Jetzt anlegen
               </Link>
             </p>

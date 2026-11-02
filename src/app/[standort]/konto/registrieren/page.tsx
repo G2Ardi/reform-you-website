@@ -11,10 +11,13 @@ export const dynamic = "force-dynamic";
 
 export default async function RegistrierenPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ standort: string }>;
+  searchParams: Promise<{ weiter?: string }>;
 }) {
   const { standort: slug } = await params;
+  const { weiter } = await searchParams;
   const standort = await getStandortBySlug(slug);
   if (!standort) notFound();
 
@@ -47,6 +50,7 @@ export default async function RegistrierenPage({
         <section className="band band-tight band-sunk">
           <div className="shell">
             <ActionForm action={action} initialState={null} submitLabel="Konto anlegen">
+              {weiter ? <input type="hidden" name="weiter" value={weiter} /> : null}
               <div className="form-row">
                 <label htmlFor="name">Name</label>
                 <input className="input" id="name" name="name" required />
@@ -56,8 +60,8 @@ export default async function RegistrierenPage({
                 <input className="input" id="email" name="email" type="email" required />
               </div>
               <div className="form-row">
-                <label htmlFor="telefon">Telefon</label>
-                <input className="input" id="telefon" name="telefon" required />
+                <label htmlFor="telefon">Handynummer</label>
+                <input className="input" id="telefon" name="telefon" type="tel" inputMode="tel" autoComplete="tel" minLength={6} required />
               </div>
               <div className="form-cols-2">
                 <div className="form-row">
@@ -89,7 +93,7 @@ export default async function RegistrierenPage({
               </div>
             </ActionForm>
             <p className="small muted" style={{ marginTop: "var(--s3)" }}>
-              Schon ein Konto? <Link className="go" href={`/${standort.slug}/konto/login`}>Zum Login</Link>
+              Schon ein Konto? <Link className="go" href={`/${standort.slug}/konto/login${weiter ? `?weiter=${encodeURIComponent(weiter)}` : ""}`}>Zum Login</Link>
             </p>
           </div>
         </section>

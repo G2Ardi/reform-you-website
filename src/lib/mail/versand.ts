@@ -1,19 +1,20 @@
 import "server-only";
-import type { Buchung, Karte, Kunde, Kurs, KursTermin, Standort } from "@prisma/client";
+import type { Buchung, Gutschein, Karte, Kunde, Kurs, KursTermin, Standort } from "@prisma/client";
 import { sendeMail } from "@/lib/mail/mailer";
 import { erstelleIcsTermin } from "@/lib/mail/ics";
-import { erstelleAktionsToken } from "@/lib/auth/actionToken";
 import { formatDatumUhrzeit, formatPreis } from "@/lib/format";
+import { formatDatumKurz, kartenLabel } from "@/lib/credits";
 
 /**
- * Textbausteine und Versandfunktionen für alle in der Aufgabe geforderten
- * Mail-Anlässe: Buchungsbestätigung (mit .ics), Erinnerung (mit Storno-/
- * Umbuchen-Link), Storno-Bestätigung, Warteliste-Nachrücken, automatische
- * Gutschrift bei Kursausfall, dazu eine interne Benachrichtigung ans
- * Studio bei jeder Stornierung.
+ * Textbausteine und Versandfunktionen für alle Mail-Anlässe: Buchungs-
+ * bestätigung (mit .ics und Link zum Termin), Erinnerung, Stornobestätigung,
+ * Warteliste (Platz frei), Gutschrift bei Kursausfall, Kauf von Credits,
+ * Gutschein (Kauf und Code), dazu interne Benachrichtigungen ans Studio bei
+ * jeder Buchung und Stornierung.
  *
  * Alle Texte in "Sie"-Form, Absender "Janina von Reform You" (siehe
- * src/lib/mail/mailer.ts).
+ * src/lib/mail/mailer.ts). Die Links führen auf eine Seite mit Login, es
+ * gibt keine Aktionen ohne Anmeldung mehr.
  */
 
 type BuchungVoll = Buchung & {
@@ -23,17 +24,31 @@ type BuchungVoll = Buchung & {
 };
 
 function baseUrl(): string {
-  return process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return "http://localhost:3000";
 }
 
-function aktionsLink(buchungId: string, aktion: "storno" | "umbuchen" | "warteliste-bestaetigen"): string {
-  const token = erstelleAktionsToken(buchungId, aktion);
-  return `${baseUrl()}/aktion/${token}`;
+/** Link zur Buchung im Kundenkonto, mit Stornieren und Verschieben. Verlangt Login. */
+function buchungsLink(b: BuchungVoll): string {
+  return `${baseUrl()}/${b.kursTermin.standort.slug}/konto/buchung/${b.id}`;
+}
+
+/** Link zum Kursplan am Tag des Termins. */
+function kursplanLink(b: BuchungVoll): string {
+  const tag = b.kursTermin.beginn.toISOString().slice(0, 10);
+  return `${baseUrl()}/${b.kursTermin.standort.slug}/buchen?tag=${tag}`;
+}
+
+function studioAdresse(): string {
+  return process.env.STUDIO_BENACHRICHTIGUNG_EMAIL ?? "info@reform-you.de";
 }
 
 function kursTitel(b: BuchungVoll): string {
   return `${b.kursTermin.kurs.name} · ${b.kursTermin.standort.name}`;
 }
+
+const GRUSS = ["Mit freundlichen Grüßen", "Janina von Reform You"];
 
 export async function sendeBuchungsbestaetigung(b: BuchungVoll): Promise<void> {
   const termin = formatDatumUhrzeit(b.kursTermin.beginn);
@@ -44,16 +59,19 @@ export async function sendeBuchungsbestaetigung(b: BuchungVoll): Promise<void> {
   const ics = erstelleIcsTermin({
     uid: b.id,
     titel: kursTitel(b),
-    beschreibung: `Buchung bei Reform You Pilates Studio. Stornieren oder umbuchen: ${aktionsLink(b.id, "storno")}`,
+    beschreibung: `Buchung bei Reform You Pilates Studio. Stornieren oder verschieben: ${buchungsLink(b)}`,
     ort: ort || b.kursTermin.standort.name,
     beginn: b.kursTermin.beginn,
     ende: b.kursTermin.ende,
   });
 
   const zahlungsHinweis =
-    b.zahlungsart === "KARTE"
-      ? "Die Einheit wurde von Ihrer Karte abgebucht."
-      : `Einzelbuchung, ${formatPreis(b.kursTermin.kurs.preisEinzelCent)}, Zahlung vor Ort bzw. laut Absprache.`;
+    b.zahlungsart === "KARTE" && b.karte
+      ? [
+          "1 Credit wurde abgebucht.",
+          `Verbleibende Credits: ${b.karte.einheitenRest} (${kartenLabel(b.karte.typ)}), gültig bis ${formatDatumKurz(b.karte.gueltigBis)}.`,
+        ]
+      : [`Einzelstunde, ${formatPreis(b.kursTermin.kurs.preisEinzelCent)}, bezahlt.`];
 
   await sendeMail({
     an: b.kunde.email,
@@ -61,23 +79,35 @@ export async function sendeBuchungsbestaetigung(b: BuchungVoll): Promise<void> {
     text: [
       `Guten Tag ${b.kunde.name},`,
       "",
-      `Ihre Buchung ist bestätigt:`,
-      `${kursTitel(b)}`,
+      "Ihre Buchung ist bestätigt:",
+      kursTitel(b),
       `${termin} Uhr`,
       ort ? `Ort: ${ort}` : "",
       "",
-      zahlungsHinweis,
+      ...zahlungsHinweis,
       "",
-      `Stornieren oder umbuchen können Sie hier: ${aktionsLink(b.id, "storno")}`,
+      `Zum Termin, mit Stornieren oder Verschieben (Login erforderlich): ${buchungsLink(b)}`,
       "",
       "Den Termin finden Sie als Anhang zum Eintragen in Ihren Kalender.",
       "",
-      "Mit freundlichen Grüßen",
-      "Janina von Reform You",
+      ...GRUSS,
     ]
-      .filter(Boolean)
+      .filter((z, i, arr) => z !== "" || arr[i - 1] !== "")
       .join("\n"),
     anhaenge: [{ filename: "termin.ics", content: ics, contentType: "text/calendar" }],
+  });
+}
+
+export async function sendeStudioBenachrichtigungBuchung(b: BuchungVoll): Promise<void> {
+  await sendeMail({
+    an: studioAdresse(),
+    betreff: `Neue Buchung: ${kursTitel(b)} (${b.kunde.name})`,
+    text: [
+      "Neue Buchung im Buchungssystem:",
+      `${b.kunde.name} (${b.kunde.email}, ${b.kunde.telefon})`,
+      `${kursTitel(b)}, ${formatDatumUhrzeit(b.kursTermin.beginn)} Uhr`,
+      `Bezahlt mit: ${b.zahlungsart === "KARTE" ? "Credits" : "Einzelstunde"}`,
+    ].join("\n"),
   });
 }
 
@@ -89,22 +119,37 @@ export async function sendeErinnerung(b: BuchungVoll): Promise<void> {
     text: [
       `Guten Tag ${b.kunde.name},`,
       "",
-      `kleine Erinnerung an Ihren Termin:`,
-      `${kursTitel(b)}`,
+      "kleine Erinnerung an Ihren Termin:",
+      kursTitel(b),
       `${termin} Uhr`,
       "",
-      "Können Sie doch nicht kommen? Ohne sich erneut anzumelden:",
-      `Stornieren: ${aktionsLink(b.id, "storno")}`,
-      `Umbuchen: ${aktionsLink(b.id, "umbuchen")}`,
+      `Stornieren oder verschieben (Login erforderlich): ${buchungsLink(b)}`,
       "",
-      "Mit freundlichen Grüßen",
-      "Janina von Reform You",
+      ...GRUSS,
     ].join("\n"),
   });
 }
 
-export async function sendeStornoBestaetigung(b: BuchungVoll): Promise<void> {
+export async function sendeStornoBestaetigung(
+  b: BuchungVoll,
+  ergebnis: { gutschrift: boolean; nachFrist: boolean },
+): Promise<void> {
   const termin = formatDatumUhrzeit(b.kursTermin.beginn);
+
+  let gutschriftText: string;
+  if (b.status === "WARTELISTE") {
+    gutschriftText = "Sie stehen nicht mehr auf der Warteliste.";
+  } else if (!ergebnis.gutschrift) {
+    gutschriftText =
+      "Die Stornierung erfolgte nach Ablauf der Stornofrist. Es gibt dafür keine Gutschrift, der Platz wird für die Warteliste frei.";
+  } else if (b.zahlungsart === "KARTE") {
+    gutschriftText = b.karte
+      ? `Der Credit wurde Ihnen wieder gutgeschrieben, die Credits sind weiter gültig bis ${formatDatumKurz(b.karte.gueltigBis)}.`
+      : "Der Credit wurde Ihnen wieder gutgeschrieben.";
+  } else {
+    gutschriftText = "Der Betrag wurde Ihnen als Guthaben (1 Credit) gutgeschrieben, nicht als Geldrückerstattung.";
+  }
+
   await sendeMail({
     an: b.kunde.email,
     betreff: `Stornierung bestätigt: ${kursTitel(b)}`,
@@ -112,31 +157,30 @@ export async function sendeStornoBestaetigung(b: BuchungVoll): Promise<void> {
       `Guten Tag ${b.kunde.name},`,
       "",
       `Ihre Buchung für ${kursTitel(b)} am ${termin} Uhr wurde storniert.`,
-      b.zahlungsart === "KARTE"
-        ? "Die Einheit wurde Ihrer Karte wieder gutgeschrieben."
-        : "Der Betrag wurde Ihnen als Guthaben gutgeschrieben, nicht als Geldrückerstattung.",
+      gutschriftText,
       "",
-      "Mit freundlichen Grüßen",
-      "Janina von Reform You",
+      ...GRUSS,
     ].join("\n"),
   });
 
-  const studioAdresse = process.env.STUDIO_BENACHRICHTIGUNG_EMAIL;
-  if (studioAdresse) {
-    await sendeMail({
-      an: studioAdresse,
-      betreff: `Stornierung: ${kursTitel(b)} (${b.kunde.name})`,
-      text: [
-        `Stornierung im Buchungssystem:`,
-        `${b.kunde.name} (${b.kunde.email})`,
-        `${kursTitel(b)}, ${termin} Uhr`,
-        `Zahlungsart: ${b.zahlungsart}`,
-      ].join("\n"),
-    });
-  }
+  await sendeMail({
+    an: studioAdresse(),
+    betreff: `Stornierung: ${kursTitel(b)} (${b.kunde.name})`,
+    text: [
+      "Stornierung im Buchungssystem:",
+      `${b.kunde.name} (${b.kunde.email}, ${b.kunde.telefon})`,
+      `${kursTitel(b)}, ${termin} Uhr`,
+      `Zahlungsart: ${b.zahlungsart === "KARTE" ? "Credits" : "Einzelstunde"}`,
+      b.status === "WARTELISTE"
+        ? "Hinweis: Eintrag auf der Warteliste."
+        : ergebnis.gutschrift
+          ? "Gutschrift erteilt."
+          : "Nach Ablauf der Stornofrist, keine Gutschrift.",
+    ].join("\n"),
+  });
 }
 
-export async function sendeWartelisteNachruecken(b: BuchungVoll): Promise<void> {
+export async function sendeWartelistePlatzFrei(b: BuchungVoll): Promise<void> {
   const termin = formatDatumUhrzeit(b.kursTermin.beginn);
   await sendeMail({
     an: b.kunde.email,
@@ -144,13 +188,12 @@ export async function sendeWartelisteNachruecken(b: BuchungVoll): Promise<void> 
     text: [
       `Guten Tag ${b.kunde.name},`,
       "",
-      `gute Nachricht: in ${kursTitel(b)} am ${termin} Uhr ist ein Platz frei geworden, Sie stehen als Nächstes auf der Warteliste.`,
+      `gute Nachricht: in ${kursTitel(b)} am ${termin} Uhr ist ein Platz frei geworden.`,
+      "Der Platz ist nicht reserviert. Wer zuerst bucht, bekommt ihn.",
       "",
-      `Bestätigen Sie Ihren Platz innerhalb von 30 Minuten hier: ${aktionsLink(b.id, "warteliste-bestaetigen")}`,
-      "Reagieren Sie nicht rechtzeitig, rückt die nächste Person auf der Warteliste nach.",
+      `Jetzt buchen: ${kursplanLink(b)}`,
       "",
-      "Mit freundlichen Grüßen",
-      "Janina von Reform You",
+      ...GRUSS,
     ].join("\n"),
   });
 }
@@ -168,8 +211,60 @@ export async function sendeGutschriftBeiAusfall(b: BuchungVoll): Promise<void> {
       "",
       "Es tut uns leid für die kurzfristige Absage.",
       "",
-      "Mit freundlichen Grüßen",
-      "Janina von Reform You",
+      ...GRUSS,
     ].join("\n"),
+  });
+}
+
+export async function sendeCreditsKauf(kunde: Kunde, karte: Karte, bezahltCent: number): Promise<void> {
+  await sendeMail({
+    an: kunde.email,
+    betreff: `Ihr Kauf: ${kartenLabel(karte.typ)}`,
+    text: [
+      `Guten Tag ${kunde.name},`,
+      "",
+      `vielen Dank für Ihren Kauf: ${kartenLabel(karte.typ)}.`,
+      `Gültig bis ${formatDatumKurz(karte.gueltigBis)}, an beiden Standorten einlösbar. Eine Buchung kostet 1 Credit.`,
+      bezahltCent > 0 ? `Bezahlt: ${formatPreis(bezahltCent)}.` : "Der Betrag wurde mit einem Gutschein beglichen.",
+      "",
+      ...GRUSS,
+    ].join("\n"),
+  });
+}
+
+export async function sendeGutscheinKaufBestaetigung(g: Gutschein): Promise<void> {
+  const tag = formatDatumKurz(g.lieferDatum);
+  await sendeMail({
+    an: g.kaeuferEmail,
+    betreff: "Ihre Gutschein-Bestellung bei Reform You",
+    text: [
+      `Guten Tag ${g.kaeuferName},`,
+      "",
+      `vielen Dank für Ihre Bestellung: Gutschein über ${formatPreis(g.betragCent)} für ${g.empfaengerName}.`,
+      `Der Code geht am ${tag} per E-Mail an ${g.empfaengerEmail}.`,
+      `Der Gutschein ist bis ${formatDatumKurz(g.gueltigBis)} gültig.`,
+      "",
+      ...GRUSS,
+    ].join("\n"),
+  });
+}
+
+export async function sendeGutscheinCode(g: Gutschein): Promise<void> {
+  await sendeMail({
+    an: g.empfaengerEmail,
+    betreff: `${g.kaeuferName} schenkt Ihnen einen Gutschein von Reform You`,
+    text: [
+      `Hallo ${g.empfaengerName},`,
+      "",
+      `${g.kaeuferName} schenkt Ihnen einen Gutschein über ${formatPreis(g.betragCent)} für das Reform You Pilates Studio.`,
+      g.nachricht ? `\nNachricht von ${g.kaeuferName}:\n${g.nachricht}\n` : "",
+      `Ihr Gutscheincode: ${g.code}`,
+      "",
+      `Einlösen: Auf der Website einen Kurs oder Credits wählen und im Bezahlschritt den Code eingeben. Gültig bis ${formatDatumKurz(g.gueltigBis)}, an beiden Standorten.`,
+      "",
+      ...GRUSS,
+    ]
+      .filter((z, i, arr) => z !== "" || arr[i - 1] !== "")
+      .join("\n"),
   });
 }

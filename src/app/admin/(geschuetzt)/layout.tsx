@@ -1,13 +1,17 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { istAdminEingeloggt } from "@/lib/auth/admin";
+import { getMitarbeiter } from "@/lib/auth/admin";
 import { adminLogoutAction } from "@/lib/actions/admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  if (!(await istAdminEingeloggt())) redirect("/admin/login");
+  const mitarbeiter = await getMitarbeiter();
+  if (!mitarbeiter) redirect("/admin/login");
+
+  const istAdmin = mitarbeiter.rolle === "ADMIN";
+  const inhaber = istAdmin && mitarbeiter.darfUmsaetzeSehen;
 
   return (
     <>
@@ -21,13 +25,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               height={510}
               className="mark-logo"
             />
-            <span className="mark-sub">Admin</span>
+            <span className="mark-sub">{istAdmin ? "Admin" : "Trainer"}</span>
           </Link>
-          <nav className="nav" style={{ display: "flex" }}>
+          <nav className="nav admin-nav" style={{ display: "flex" }}>
             <Link href="/admin">Termine</Link>
-            <Link href="/admin/einstellungen">Einstellungen</Link>
-            <Link href="/admin/erinnerungen">Erinnerungen</Link>
-            <Link href="/admin/kulanz">Kulanz</Link>
+            {istAdmin ? <Link href="/admin/einstellungen">Einstellungen</Link> : null}
+            {istAdmin ? <Link href="/admin/erinnerungen">Versand</Link> : null}
+            {istAdmin ? <Link href="/admin/kulanz">Kulanz</Link> : null}
+            {inhaber ? <Link href="/admin/umsatz">Umsatz</Link> : null}
+            {inhaber ? <Link href="/admin/mitarbeiter">Mitarbeiter</Link> : null}
+            <span className="small muted admin-nutzer">{mitarbeiter.name}</span>
             <form action={adminLogoutAction}>
               <button className="btn btn-line" type="submit">
                 Logout
