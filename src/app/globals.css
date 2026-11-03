@@ -251,7 +251,10 @@ a:hover { color: var(--espresso); }
   color: var(--chalk);
 }
 .head-solid {
-  position: static;
+  /* relative statt static, damit das aufgeklappte Menü (z-index) über dem
+     Seiteninhalt liegt und nicht von animierten Abschnitten überdeckt wird */
+  position: relative;
+  z-index: 30;
   color: var(--espresso);
   border-bottom: 1px solid var(--taupe);
 }
@@ -338,9 +341,12 @@ a:hover { color: var(--espresso); }
 
 @media (max-width: 61.99rem) {
   .burger { display: inline-flex; }
-  .head-in { position: relative; }
+  /* Das Menü hängt am ganzen Kopfbereich (.head), nicht an der Logo-Zeile,
+     damit es unter der Standortzeile aufklappt und nichts verdeckt. */
   .nav {
-    position: absolute; left: 0; right: 0; top: calc(100% + var(--s2));
+    position: absolute; left: var(--gut); right: var(--gut); top: 100%;
+    z-index: 40;
+    box-shadow: 0 16px 34px rgba(60, 44, 25, 0.18);
     flex-direction: column; align-items: stretch; gap: 0;
     background: var(--paper);
     color: var(--espresso);
@@ -698,6 +704,7 @@ a:hover { color: var(--espresso); }
 }
 .picker-label {
   position: absolute; left: 0; right: 0; bottom: 0;
+  text-align: left;
   display: grid;
   gap: 0.2rem;
   padding: clamp(0.8rem, 3vw, 1.75rem);
@@ -718,9 +725,21 @@ a:hover { color: var(--espresso); }
   text-transform: lowercase;
 }
 .picker-hinweis {
+  /* Langer Hinweistext nur auf breiten Bildschirmen, auf dem Handy würde er
+     das Foto zudecken. Die volle Info steht auf der Seite des Standorts. */
+  display: none;
   font-size: 0.75rem;
   line-height: 1.4;
   color: var(--taupe);
+}
+@media (min-width: 56rem) {
+  .picker-hinweis {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+  }
 }
 
 /* Pflicht-Popup. Sichtbar nur, solange <html> kein data-standort-ok trägt,
@@ -881,7 +900,7 @@ textarea.input {
   font-size: 0.8125rem;
   letter-spacing: 0.04em;
   min-height: 44px;
-  padding: 0.5rem 1.05rem;
+  padding: 0.5rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--taupe);
   background: var(--paper);
@@ -927,7 +946,7 @@ textarea.input {
   justify-content: space-between;
   gap: var(--s2);
 }
-.plan-pills { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.plan-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 .plan-filter-wrap { position: relative; flex: none; }
 .plan-filter-knopf {
@@ -1191,3 +1210,20 @@ textarea.input {
   line-height: 1;
 }
 .umsatz-gross { display: grid; gap: 0.3rem; margin: var(--s4) 0 0; }
+
+/* Der Admin-Bereich hat kein Burger-Menü: Auf dem Handy bleibt die Leiste
+   sichtbar und bricht um, statt als aufklappbares Menü zu erscheinen. */
+@media (max-width: 61.99rem) {
+  .head-in:has(.admin-nav) { flex-wrap: wrap; }
+  .admin-nav {
+    position: static;
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s2);
+  }
+  .admin-nav a { border-bottom: 1px solid transparent; padding: 0.4rem 0; }
+}
