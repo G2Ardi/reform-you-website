@@ -1,0 +1,116 @@
+# Reform You Pilates Studio: Website, Datenbank, Sicherung und taeglicher Job.
+# Anleitung: BETRIEB.md. Zugangsdaten und Einstellungen stehen in der Datei ".env"
+# (Vorlage: .env.beispiel).
+
+name: reform-you
+
+services:
+  # --------------------------------------------------------------- Datenbank
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-reformyou}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}
+      POSTGRES_DB: ${POSTGRES_DB:-reformyou}
+      TZ: Europe/Berlin
+    volumes:
+      - dbdaten:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ------------------------------------------- Migration (laeuft bei jedem Start)
+  migrate:
+    build:
+      context: .
+      target: werkzeug
+    image: reform-you-werkzeug:latest
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-reformyou}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-reformyou}
+      TZ: Europe/Berlin
+    command: ["npx", "prisma", "migrate", "deploy"]
+
+  # ------------------------------------------------------------------ Website
+  app:
+    build:
+      context: .
+      target: laufzeit
+    image: reform-you-app:latest
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-reformyou}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-reformyou}
+      TZ: Europe/Berlin
+    # Standard: nur lokal erreichbar, davor sitzt der Reverse Proxy. Fuer den
+    # direkten Zugriff im Test APP_BIND=0.0.0.0:3000 setzen.
+    ports:
+      - "${APP_BIND:-127.0.0.1:3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ------------------------------ Taeglicher Job: Gutschein-Codes und Erinnerungen
+  cron:
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET in .env setzen}
+    volumes:
+      - ./deploy/cron-start.sh:/cron-start.sh:ro
+    entrypoint: ["/bin/sh", "/cron-start.sh"]
+
+  # ------------------------------------------------- Taegliche Datenbanksicherung
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-reformyou}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-reformyou}
+      BACKUP_TAGE: ${BACKUP_TAGE:-14}
+      TZ: Europe/Berlin
+    volumes:
+      - ./backups:/backups
+      - ./deploy/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "/backup.sh"]
+
+  # ---------------------- Optional: HTTPS direkt hier (docker compose --profile proxy up -d)
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["proxy"]
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydaten:/data
+      - caddykonfig:/config
+
+volumes:
+  dbdaten:
+  caddydaten:
+  caddykonfig:

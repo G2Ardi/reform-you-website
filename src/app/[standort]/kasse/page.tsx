@@ -132,14 +132,14 @@ export default async function KassePage({
                 {Object.entries(versteckt).map(([k, v]) => (
                   <input key={k} type="hidden" name={k} value={v} />
                 ))}
-                <label htmlFor="code">Gutscheincode</label>
+                <label htmlFor="code">Gutschein- oder Willkommenscode</label>
                 <div className="kasse-gutschein-zeile">
                   <input
                     className="input"
                     id="code"
                     name="code"
                     defaultValue={q.code ?? ""}
-                    placeholder="RY-XXXX-XXXX"
+                    placeholder="RY-XXXX-XXXX oder WK-XXXX-XXXX"
                     autoComplete="off"
                     autoCapitalize="characters"
                   />
@@ -149,6 +149,11 @@ export default async function KassePage({
                 </div>
               </form>
               {uebersicht.gutscheinFehler ? <p className="form-fehler">{uebersicht.gutscheinFehler}</p> : null}
+              {uebersicht.freikurs ? (
+                <p className="form-erfolg">
+                  Willkommenscode {uebersicht.freikurs.code} eingelöst. Diese Einzelstunde ist kostenlos.
+                </p>
+              ) : null}
               {uebersicht.gutschein ? (
                 <p className="form-erfolg">
                   Gutschein {uebersicht.gutschein.code} eingelöst, {formatPreis(uebersicht.gutschein.abzugCent)}{" "}
@@ -166,6 +171,12 @@ export default async function KassePage({
                   <dt>{uebersicht.titel}</dt>
                   <dd>{formatPreis(uebersicht.gesamtCent)}</dd>
                 </div>
+                {uebersicht.freikurs ? (
+                  <div>
+                    <dt>Willkommenscode</dt>
+                    <dd>−{formatPreis(uebersicht.gesamtCent)}</dd>
+                  </div>
+                ) : null}
                 {uebersicht.gutschein ? (
                   <div>
                     <dt>Gutschein</dt>
@@ -181,11 +192,11 @@ export default async function KassePage({
 
               <TestmodusHinweis />
 
-              <ActionForm action={action} initialState={null} submitLabel="Zahlungspflichtig kaufen">
+              <ActionForm action={action} initialState={null} submitLabel={uebersicht.zuZahlenCent === 0 ? "Kostenlos buchen" : "Zahlungspflichtig kaufen"}>
                 {Object.entries(versteckt).map(([k, v]) => (
                   <input key={k} type="hidden" name={k} value={v} />
                 ))}
-                <input type="hidden" name="code" value={uebersicht.gutschein?.code ?? ""} />
+                <input type="hidden" name="code" value={uebersicht.gutschein?.code ?? uebersicht.freikurs?.code ?? ""} />
                 <p className="small muted">
                   Mit dem Kauf stimmst du den{" "}
                   <Link className="go" href={`/${standort.slug}/agb`}>

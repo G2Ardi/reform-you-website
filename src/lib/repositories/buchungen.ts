@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getEinstellungen } from "@/lib/repositories/einstellungen";
 import { erstelleKulanzGuthaben } from "@/lib/repositories/karten";
 import { GUTHABEN_LAUFZEIT_MONATE } from "@/lib/credits";
+import { reaktiviereFreikursFuerBuchung, uebertrageFreikursAufBuchung } from "@/lib/repositories/freikurse";
 import {
   sendeBuchungsbestaetigung,
   sendeErinnerung,
@@ -68,6 +69,8 @@ export async function erstelleBuchung(params: {
   /** Beim Kauf einer Einzelstunde: nicht auf die Warteliste ausweichen, sonst
    * wuerde der Kunde fuer einen Platz zahlen, den er nicht bekommt. */
   nurBeiFreiemPlatz?: boolean;
+  /** Mit Freikurs-Code (Willkommenscode) gebucht, siehe freikurse.ts. */
+  gratis?: boolean;
 }) {
   const termin = await ladeTerminFuerBuchung(params.kursTerminId);
 
@@ -133,6 +136,7 @@ export async function erstelleBuchung(params: {
           zahlungsart: params.zahlungsart,
           karteId: karte?.id ?? null,
           wartelistePosition: null,
+          gratis: params.gratis ?? false,
         },
         include: VOLLER_BEZUG,
       });
@@ -145,6 +149,7 @@ export async function erstelleBuchung(params: {
         status: wirdWarteliste ? "WARTELISTE" : "GEBUCHT",
         zahlungsart: params.zahlungsart,
         karteId: wirdWarteliste ? null : (karte?.id ?? null),
+        gratis: params.gratis ?? false,
         wartelistePosition: wirdWarteliste
           ? (await tx.buchung.count({
               where: { kursTerminId: params.kursTerminId, status: "WARTELISTE" },
@@ -220,7 +225,7 @@ export async function storniereBuchung(params: {
           data: { einheitenRest: Math.min(karte.einheitenGesamt, karte.einheitenRest + 1) },
         });
       }
-    } else if (buchung.zahlungsart === "EINZELZAHLUNG") {
+    } else if (buchung.zahlungsart === "EINZELZAHLUNG" && !buchung.gratis) {
       // Kein Geld zurück: 1 Credit Guthaben. Innerhalb der Transaktion bewusst
       // mit "tx" statt der Repository-Funktion, siehe erstelleKulanzGuthaben.
       const gueltigBis = new Date();
@@ -238,6 +243,9 @@ export async function storniereBuchung(params: {
     }
   });
 
+  // Mit Willkommenscode gebucht: Der Code wird wieder gültig statt Guthaben.
+  if (gutschrift && buchung.gratis) await reaktiviereFreikursFuerBuchung(buchung.id);
+
   await sendeStornoBestaetigung(buchung, { gutschrift, nachFrist });
 
   if (warGebucht) {
@@ -254,7 +262,7 @@ export async function getUmbuchOptionen(buchungId: string) {
   const alt = await prisma.buchung.findUnique({ where: { id: buchungId }, include: VOLLER_BEZUG });
   if (!alt) return [];
 
-  const nurKarteGueltig = alt.zahlungsart === "KARTE" && alt.karte?.typ !== "GUTHABEN";
+  const nurKarteGueltig = alt.gratis || (alt.zahlungsart === "KARTE" && alt.karte?.typ !== "GUTHABEN");
   const kandidaten = await prisma.kursTermin.findMany({
     where: {
       status: "AKTIV",
@@ -288,6 +296,9 @@ export async function umbucheBuchung(params: { buchungId: string; kundeId?: stri
   if (neuerTermin.status !== "AKTIV") throw new BuchungsFehler("Der neue Termin ist ausgefallen.");
   if (neuerTermin.beginn.getTime() - 15 * 60_000 <= Date.now()) {
     throw new BuchungsFehler("Der neue Termin ist nicht mehr buchbar.");
+  }
+  if (alt.gratis && !neuerTermin.kurs.karteGueltig) {
+    throw new BuchungsFehler("Der Willkommenscode gilt nur für Reformer-Kurse.");
   }
   if (alt.zahlungsart === "KARTE" && alt.karte?.typ !== "GUTHABEN" && !neuerTermin.kurs.karteGueltig) {
     throw new BuchungsFehler("Für diesen Kurs können keine Credits eingelöst werden.");
@@ -327,11 +338,13 @@ export async function umbucheBuchung(params: { buchungId: string; kundeId?: stri
         status: "GEBUCHT",
         zahlungsart: alt.zahlungsart,
         karteId: alt.karteId,
+        gratis: alt.gratis,
       },
       include: VOLLER_BEZUG,
     });
   });
 
+  if (alt.gratis) await uebertrageFreikursAufBuchung(alt.id, neu.id);
   await benachrichtigeWarteliste(alt.kursTerminId);
   await sendeBuchungsbestaetigung(neu);
   await sendeStudioBenachrichtigungBuchung(neu);
@@ -412,6 +425,8 @@ export async function lasseKursAusfallen(kursTerminId: string) {
             data: { einheitenRest: Math.min(karte.einheitenGesamt, karte.einheitenRest + 1) },
           });
         }
+      } else if (buchung.gratis) {
+        await reaktiviereFreikursFuerBuchung(buchung.id);
       } else {
         await erstelleKulanzGuthaben(buchung.kundeId, 1, `Gutschrift wegen Kursausfall, Termin ${kursTerminId}`);
       }

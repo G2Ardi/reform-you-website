@@ -3,13 +3,15 @@ import { prisma } from "@/lib/prisma";
 import type { Einstellung } from "@prisma/client";
 
 /**
- * Singleton-Einstellungen (Erinnerungs- und Stornofristen), im Admin-
- * Bereich änderbar statt hart codiert, siehe Auftrag.
+ * Singleton-Einstellungen (Fristen, Willkommenscode), im Admin-Bereich
+ * änderbar statt hart codiert.
  */
 
-const STANDARD: Pick<Einstellung, "erinnerungStundenVorher" | "stornoFristStunden"> = {
+const STANDARD = {
   erinnerungStundenVorher: 36,
   stornoFristStunden: 24,
+  willkommenscodeAktiv: true,
+  willkommenscodeMonate: 3,
 };
 
 export async function getEinstellungen(): Promise<Einstellung> {
@@ -21,6 +23,8 @@ export async function getEinstellungen(): Promise<Einstellung> {
 export async function updateEinstellungen(werte: {
   erinnerungStundenVorher: number;
   stornoFristStunden: number;
+  willkommenscodeAktiv: boolean;
+  willkommenscodeMonate: number;
 }): Promise<Einstellung> {
   return prisma.einstellung.upsert({
     where: { id: 1 },

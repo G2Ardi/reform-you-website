@@ -3,6 +3,7 @@ import { getUmsatzUebersicht } from "@/lib/repositories/umsatz";
 import { formatDatumKurz } from "@/lib/credits";
 import { formatPreis } from "@/lib/format";
 import { istTestmodus } from "@/lib/repositories/kasse";
+import { zahlungsModus } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function AdminUmsatzPage() {
         </p>
         {istTestmodus() ? (
           <p className="hinweis-test" role="note" style={{ marginTop: "var(--s3)" }}>
-            <strong>Testmodus:</strong> Die Zahlen stammen aus simulierten Zahlungen, nicht aus echtem Geld.
+            <strong>Testmodus:</strong> {zahlungsModus() === "STRIPE_TEST" ? "Die Zahlen stammen aus Stripe-Testzahlungen und simulierten Zahlungen, nicht aus echtem Geld." : "Die Zahlen stammen aus simulierten Zahlungen, nicht aus echtem Geld."}
           </p>
         ) : null}
 

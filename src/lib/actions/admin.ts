@@ -21,6 +21,7 @@ import {
 import { erstelleKulanzGuthaben, kaufeKarte } from "@/lib/repositories/karten";
 import { findeKundeNachEmail } from "@/lib/repositories/kunden";
 import { versendeFaelligeGutscheine } from "@/lib/repositories/gutscheine";
+import { FreikursFehler, erstelleManuellenCode, sperreFreikurs } from "@/lib/repositories/freikurse";
 import {
   MitarbeiterFehler,
   aktualisiereMitarbeiter,
@@ -58,10 +59,19 @@ export async function einstellungenSpeichernAction(
   await erzwingeAdmin();
   const erinnerung = Number(formData.get("erinnerungStundenVorher"));
   const storno = Number(formData.get("stornoFristStunden"));
+  const codeMonate = Number(formData.get("willkommenscodeMonate"));
   if (!Number.isFinite(erinnerung) || erinnerung <= 0 || !Number.isFinite(storno) || storno <= 0) {
     return { fehler: "Bitte positive Zahlen eingeben." };
   }
-  await updateEinstellungen({ erinnerungStundenVorher: erinnerung, stornoFristStunden: storno });
+  if (!Number.isInteger(codeMonate) || codeMonate < 1 || codeMonate > 36) {
+    return { fehler: "Die Gültigkeit des Willkommenscodes muss zwischen 1 und 36 Monaten liegen." };
+  }
+  await updateEinstellungen({
+    erinnerungStundenVorher: erinnerung,
+    stornoFristStunden: storno,
+    willkommenscodeAktiv: formData.get("willkommenscodeAktiv") === "on",
+    willkommenscodeMonate: codeMonate,
+  });
   revalidatePath("/admin/einstellungen");
   return { erfolg: "Gespeichert." };
 }
@@ -195,4 +205,36 @@ export async function mitarbeiterPasswortAction(
     return { fehler: fehler instanceof MitarbeiterFehler ? fehler.message : "Ändern fehlgeschlagen." };
   }
   return { erfolg: "Passwort geändert." };
+}
+
+export async function freikursErzeugenAction(
+  _vorher: AdminErgebnis | null,
+  formData: FormData,
+): Promise<AdminErgebnis | null> {
+  await erzwingeAdmin();
+  const email = String(formData.get("email") ?? "").trim();
+  const notiz = String(formData.get("notiz") ?? "").trim();
+  const monateText = String(formData.get("monate") ?? "").trim();
+  try {
+    const code = await erstelleManuellenCode({
+      email: email || undefined,
+      notiz: notiz || undefined,
+      monate: monateText ? Number(monateText) : undefined,
+    });
+    revalidatePath("/admin/codes");
+    return { erfolg: `Code erzeugt: ${code.code}${code.email ? `, per Mail an ${code.email} geschickt` : ""}.` };
+  } catch (fehler) {
+    return { fehler: fehler instanceof FreikursFehler ? fehler.message : "Der Code konnte nicht erzeugt werden." };
+  }
+}
+
+export async function freikursSperrenAction(freikursId: string): Promise<AdminErgebnis> {
+  await erzwingeAdmin();
+  try {
+    await sperreFreikurs(freikursId);
+  } catch (fehler) {
+    return { fehler: fehler instanceof FreikursFehler ? fehler.message : "Sperren fehlgeschlagen." };
+  }
+  revalidatePath("/admin/codes");
+  return { erfolg: "Gesperrt." };
 }

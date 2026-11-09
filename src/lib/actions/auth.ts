@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { registriereKunde, findeKundeNachEmail } from "@/lib/repositories/kunden";
+import { erstelleWillkommenscodeFuerNeueKundin } from "@/lib/repositories/freikurse";
+import { istWegwerfAdresse } from "@/lib/wegwerf-mail";
 import { pruefePasswort } from "@/lib/auth/password";
 import { erstelleSession, beendeSession } from "@/lib/auth/session";
 import type { ErgebnisMitText } from "@/lib/actions/types";
@@ -39,11 +41,23 @@ export async function registrierenAction(
     return { fehler: "Bitte bestätigen, dass Sie mindestens 16 Jahre alt sind (ggf. mit einem Elternteil)." };
   }
 
+  if (istWegwerfAdresse(email)) {
+    return { fehler: "Bitte eine echte E-Mail-Adresse verwenden. Wegwerf-Adressen werden nicht akzeptiert." };
+  }
+
   let kunde;
   try {
     kunde = await registriereKunde({ name, email, passwort, telefon, strasse, plz, ort });
   } catch (fehler) {
     return { fehler: fehler instanceof Error ? fehler.message : "Registrierung fehlgeschlagen." };
+  }
+
+  // Willkommenscode (ein Kurs gratis) bei der Erstregistrierung, wenn eingeschaltet.
+  // Ein Fehler hier darf die Registrierung nie scheitern lassen.
+  try {
+    await erstelleWillkommenscodeFuerNeueKundin(kunde);
+  } catch (fehler) {
+    console.error("[reform-you] Willkommenscode konnte nicht erzeugt werden:", fehler);
   }
 
   await erstelleSession(kunde.id);

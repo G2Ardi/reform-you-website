@@ -1,11 +1,15 @@
-import { istTestmodus } from "@/lib/repositories/kasse";
+import { zahlungsModus } from "@/lib/stripe";
 
-/** Deutlicher Hinweis, solange keine echte Zahlungsanbindung aktiv ist. */
+/** Deutlicher Hinweis, solange nicht mit echtem Geld bezahlt wird. */
 export default function TestmodusHinweis() {
-  if (!istTestmodus()) return null;
+  const modus = zahlungsModus();
+  if (modus === "STRIPE_LIVE") return null;
   return (
     <p className="hinweis-test" role="note">
-      <strong>Testmodus:</strong> Die Bezahlung wird nur simuliert, es wird kein Geld abgebucht.
+      <strong>Testmodus:</strong>{" "}
+      {modus === "STRIPE_TEST"
+        ? "Bezahlt wird über Stripe im Testmodus. Mit der Testkarte 4242 4242 4242 4242, einem beliebigen Datum in der Zukunft und beliebiger Prüfziffer. Es wird kein Geld abgebucht."
+        : "Die Bezahlung wird nur simuliert, es wird kein Geld abgebucht."}
     </p>
   );
 }

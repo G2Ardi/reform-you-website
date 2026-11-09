@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.vercel
+.env
+.env.*
+!.env.beispiel
+*.log
+backups
+prisma/dev.db
+tsconfig.tsbuildinfo
+npm-debug.log*
+README.md
+*.zip

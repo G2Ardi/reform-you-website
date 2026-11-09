@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "SkalaArt" AS ENUM ('POSITION', 'OHNE_FEDER');
 
@@ -14,13 +17,22 @@ CREATE TYPE "BestellStatus" AS ENUM ('OFFEN', 'BEZAHLT', 'STORNIERT');
 CREATE TYPE "KursTerminStatus" AS ENUM ('AKTIV', 'AUSGEFALLEN');
 
 -- CreateEnum
-CREATE TYPE "BuchungStatus" AS ENUM ('GEBUCHT', 'WARTELISTE', 'STORNIERT', 'NO_SHOW');
+CREATE TYPE "BuchungStatus" AS ENUM ('GEBUCHT', 'WARTELISTE', 'STORNIERT', 'NO_SHOW', 'ANWESEND');
 
 -- CreateEnum
 CREATE TYPE "ZahlungsArt" AS ENUM ('KARTE', 'EINZELZAHLUNG');
 
 -- CreateEnum
 CREATE TYPE "KartenTyp" AS ENUM ('FUENFER', 'ZEHNER', 'GUTHABEN');
+
+-- CreateEnum
+CREATE TYPE "GutscheinStatus" AS ENUM ('GEPLANT', 'VERSENDET');
+
+-- CreateEnum
+CREATE TYPE "ZahlungsZweck" AS ENUM ('EINZELSTUNDE', 'CREDITS', 'GUTSCHEIN');
+
+-- CreateEnum
+CREATE TYPE "MitarbeiterRolle" AS ENUM ('ADMIN', 'TRAINER');
 
 -- CreateTable
 CREATE TABLE "standorte" (
@@ -241,6 +253,70 @@ CREATE TABLE "karten" (
 );
 
 -- CreateTable
+CREATE TABLE "gutscheine" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "betragCent" INTEGER NOT NULL,
+    "restCent" INTEGER NOT NULL,
+    "gueltigBis" TIMESTAMP(3) NOT NULL,
+    "status" "GutscheinStatus" NOT NULL DEFAULT 'GEPLANT',
+    "kaeuferName" TEXT NOT NULL,
+    "kaeuferEmail" TEXT NOT NULL,
+    "empfaengerName" TEXT NOT NULL,
+    "empfaengerEmail" TEXT NOT NULL,
+    "nachricht" TEXT,
+    "lieferDatum" TIMESTAMP(3) NOT NULL,
+    "versandtAm" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "gutscheine_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "zahlungen" (
+    "id" TEXT NOT NULL,
+    "zweck" "ZahlungsZweck" NOT NULL,
+    "betragCent" INTEGER NOT NULL,
+    "anbieter" TEXT NOT NULL DEFAULT 'TEST',
+    "bezug" TEXT,
+    "standortId" TEXT,
+    "kundeId" TEXT,
+    "buchungId" TEXT,
+    "gutscheinId" TEXT,
+    "gutscheinAbzugCent" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "zahlungen_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "mitarbeiter" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "passwortHash" TEXT NOT NULL,
+    "rolle" "MitarbeiterRolle" NOT NULL,
+    "darfUmsaetzeSehen" BOOLEAN NOT NULL DEFAULT false,
+    "aktiv" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "mitarbeiter_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "mitarbeiter_sessions" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "mitarbeiterId" TEXT NOT NULL,
+    "ablaufDatum" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "mitarbeiter_sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "einstellungen" (
     "id" INTEGER NOT NULL DEFAULT 1,
     "erinnerungStundenVorher" INTEGER NOT NULL DEFAULT 36,
@@ -264,6 +340,18 @@ CREATE UNIQUE INDEX "kunden_email_key" ON "kunden"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "sessions_token_key" ON "sessions"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "gutscheine_code_key" ON "gutscheine"("code");
+
+-- CreateIndex
+CREATE INDEX "zahlungen_createdAt_idx" ON "zahlungen"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "mitarbeiter_email_key" ON "mitarbeiter"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "mitarbeiter_sessions_token_key" ON "mitarbeiter_sessions"("token");
 
 -- AddForeignKey
 ALTER TABLE "kurse" ADD CONSTRAINT "kurse_standortId_fkey" FOREIGN KEY ("standortId") REFERENCES "standorte"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -303,3 +391,10 @@ ALTER TABLE "buchungen" ADD CONSTRAINT "buchungen_karteId_fkey" FOREIGN KEY ("ka
 
 -- AddForeignKey
 ALTER TABLE "karten" ADD CONSTRAINT "karten_kundeId_fkey" FOREIGN KEY ("kundeId") REFERENCES "kunden"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "zahlungen" ADD CONSTRAINT "zahlungen_gutscheinId_fkey" FOREIGN KEY ("gutscheinId") REFERENCES "gutscheine"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "mitarbeiter_sessions" ADD CONSTRAINT "mitarbeiter_sessions_mitarbeiterId_fkey" FOREIGN KEY ("mitarbeiterId") REFERENCES "mitarbeiter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

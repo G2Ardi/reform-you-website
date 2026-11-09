@@ -10,6 +10,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { standorteContent } from "../src/lib/content/standorte-content";
+import { kurstermineAnlegen } from "./termine";
 
 const prisma = new PrismaClient();
 
@@ -19,86 +20,6 @@ const prisma = new PrismaClient();
  */
 const TEST_KUNDE_EMAIL = "test@reform-you.de";
 const TEST_KUNDE_PASSWORT = "test1234";
-
-/**
- * Wochenplan je Standort: Wochentag (0 = Sonntag), Uhrzeit, Kurs-Slug.
- * Frei erfunden fuer die Testumgebung, orientiert an "Stundenplan wird
- * monatlich neu erstellt" (Fragenkatalog Antworten, Abschnitt 3) und daran,
- * dass beide Standorte zeitlich parallel laufen, aber unterschiedliche
- * Uhrzeiten haben sollen, damit eine echte Liste zum Buchen entsteht.
- */
-const wochenplanWassenberg: Array<{ wochentag: number; zeit: string; kursSlug: string }> = [
-  { wochentag: 1, zeit: "09:00", kursSlug: "reformer-basics" },
-  { wochentag: 1, zeit: "18:00", kursSlug: "reformer-flow" },
-  { wochentag: 2, zeit: "10:00", kursSlug: "mommy-mini" },
-  { wochentag: 3, zeit: "09:00", kursSlug: "reformer-flow" },
-  { wochentag: 3, zeit: "18:00", kursSlug: "reformer-cardio" },
-  { wochentag: 4, zeit: "17:30", kursSlug: "reformer-basics" },
-  { wochentag: 5, zeit: "09:00", kursSlug: "reformer-cardio" },
-  { wochentag: 6, zeit: "10:00", kursSlug: "reformer-basics" },
-];
-
-const wochenplanWegberg: Array<{ wochentag: number; zeit: string; kursSlug: string }> = [
-  { wochentag: 2, zeit: "09:00", kursSlug: "reformer-basics" },
-  { wochentag: 2, zeit: "18:30", kursSlug: "reformer-flow" },
-  { wochentag: 3, zeit: "10:30", kursSlug: "mommy-mini" },
-  { wochentag: 4, zeit: "09:00", kursSlug: "reformer-cardio" },
-  { wochentag: 5, zeit: "18:00", kursSlug: "reformer-flow" },
-  { wochentag: 6, zeit: "11:00", kursSlug: "reformer-basics" },
-];
-
-const wochenplaene: Record<string, typeof wochenplanWassenberg> = {
-  wassenberg: wochenplanWassenberg,
-  wegberg: wochenplanWegberg,
-};
-
-async function kurstermineAnlegen() {
-  const kurse = await prisma.kurs.findMany({ include: { standort: true } });
-  const heute = new Date();
-  heute.setHours(0, 0, 0, 0);
-
-  const ANZAHL_TAGE = 21;
-  let angelegt = 0;
-
-  for (let i = 1; i <= ANZAHL_TAGE; i++) {
-    const tag = new Date(heute);
-    tag.setDate(tag.getDate() + i);
-    const wochentag = tag.getDay();
-
-    for (const [standortSlug, plan] of Object.entries(wochenplaene)) {
-      for (const eintrag of plan) {
-        if (eintrag.wochentag !== wochentag) continue;
-        const kurs = kurse.find(
-          (k) => k.standort.slug === standortSlug && k.slug === eintrag.kursSlug,
-        );
-        if (!kurs) continue;
-
-        const [stunde, minute] = eintrag.zeit.split(":").map(Number);
-        const beginn = new Date(tag);
-        beginn.setHours(stunde, minute, 0, 0);
-        const ende = new Date(beginn.getTime() + (kurs.dauerMinuten ?? 50) * 60_000);
-
-        const existiert = await prisma.kursTermin.findFirst({
-          where: { kursId: kurs.id, beginn },
-        });
-        if (existiert) continue;
-
-        await prisma.kursTermin.create({
-          data: {
-            kursId: kurs.id,
-            standortId: kurs.standortId,
-            beginn,
-            ende,
-            kapazitaet: kurs.kapazitaetStandard,
-          },
-        });
-        angelegt++;
-      }
-    }
-  }
-
-  console.log(`Kurstermine angelegt: ${angelegt} (naechste ${ANZAHL_TAGE} Tage, beide Standorte)`);
-}
 
 async function testKundeAnlegen() {
   const passwortHash = await bcrypt.hash(TEST_KUNDE_PASSWORT, 10);
@@ -237,8 +158,12 @@ async function main() {
     console.log(`Standort angelegt oder vorhanden: ${erstellt.name} (${erstellt.slug})`);
   }
 
-  await kurstermineAnlegen();
-  await testKundeAnlegen();
+  // SEED_TESTDATEN=nein (Betrieb): nur die echten Inhalte und Einstellungen,
+  // kein Testkunde und keine erfundenen Kurstermine.
+  if (process.env.SEED_TESTDATEN !== "nein") {
+    await kurstermineAnlegen(prisma);
+    await testKundeAnlegen();
+  }
   await einstellungenAnlegen();
 }
 

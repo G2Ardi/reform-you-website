@@ -1,0 +1,14 @@
+# Optional: HTTPS direkt aus diesem Setup (docker compose --profile proxy up -d).
+# Voraussetzung: DOMAIN in .env gesetzt, der DNS-Eintrag zeigt auf diesen Server
+# und die Ports 80 und 443 sind aus dem Internet erreichbar. Das Zertifikat holt
+# Caddy automatisch bei Let's Encrypt. Sitzt davor schon ein Reverse Proxy
+# (Firewall, nginx, Traefik), wird dieses Profil nicht gebraucht.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
+
+# www auf die Hauptadresse umleiten
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

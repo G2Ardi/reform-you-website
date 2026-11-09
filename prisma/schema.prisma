@@ -15,7 +15,10 @@
 // diese echte Datenbank, lokal wie auf Vercel, siehe README.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "debian-openssl-3.0.x" ist die Engine fuer den Docker-Betrieb (Debian
+  // Bookworm), "native" bleibt fuer die Entwicklung unter Windows.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -381,6 +384,10 @@ model Buchung {
   storniertAm  DateTime?
   stornoGrund  String?
 
+  /// Mit einem Freikurs-Code (Willkommenscode) bezahlt: Bei Storno wird der Code
+  /// wieder gueltig, es entsteht kein Guthaben.
+  gratis Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -481,6 +488,9 @@ model Zahlung {
   /// Wert eines dabei eingeloesten Gutscheins, nur zur Nachvollziehbarkeit
   gutscheinAbzugCent Int @default(0)
 
+  /// Zahlungs-ID beim Anbieter (Stripe PaymentIntent), fuer Abgleich und Buchhaltung
+  externeId String?
+
   createdAt DateTime @default(now())
 
   @@index([createdAt])
@@ -529,7 +539,116 @@ model Einstellung {
   id                      Int      @id @default(1)
   erinnerungStundenVorher Int      @default(36)
   stornoFristStunden      Int      @default(24)
+  /// Willkommenscode (ein kostenloser Kurs) bei der Erstregistrierung automatisch erzeugen und mailen
+  willkommenscodeAktiv    Boolean  @default(true)
+  /// Gueltigkeit des Willkommenscodes in Monaten
+  willkommenscodeMonate   Int      @default(3)
   updatedAt               DateTime @updatedAt
 
   @@map("einstellungen")
+}
+
+// ============================================================
+// Stripe: Bestellungen im Bezahlvorgang
+// ============================================================
+
+enum StripeArt {
+  CREDITS
+  EINZELSTUNDE
+  GUTSCHEIN
+}
+
+enum StripeStatus {
+  /// Checkout-Sitzung angelegt, noch nicht abgeschlossen
+  OFFEN
+  /// Wird gerade ausgefuehrt (verhindert doppelte Ausfuehrung)
+  IN_ARBEIT
+  /// Bezahlt und ausgefuehrt (Credits, Buchung oder Gutschein angelegt)
+  BEZAHLT
+  /// Ausfuehrung unmoeglich (z. B. Kurs inzwischen voll), Zahlung wurde erstattet
+  ERSTATTET
+  /// Zahlung spaeter fehlgeschlagen (z. B. SEPA-Ruecklastschrift), manuell pruefen
+  FEHLGESCHLAGEN
+  /// Ausfuehrung unmoeglich und automatische Erstattung gescheitert, manuell erstatten
+  MANUELL
+}
+
+/// Eine Bestellung, die ueber Stripe Checkout bezahlt wird. Die Daten stehen
+/// hier, bis die Zahlung da ist, erst dann entstehen Credits, Buchung oder
+/// Gutschein. sessionId ist eindeutig, damit eine Zahlung nur einmal ausgefuehrt wird.
+model StripeBestellung {
+  id        String       @id @default(cuid())
+  sessionId String?      @unique
+  art       StripeArt
+  status    StripeStatus @default(OFFEN)
+
+  kundeId      String?
+  standortSlug String
+
+  /// Gesamtpreis vor Gutschein und der Betrag, der bei Stripe bezahlt wird
+  gesamtCent         Int
+  betragCent         Int
+  gutscheinCode      String?
+  gutscheinAbzugCent Int     @default(0)
+
+  /// Auswahl als JSON: Credits-Typ, Termin-ID oder Gutschein-Daten
+  daten           String
+  paymentIntentId String?
+  fehler          String?
+  ergebnis        String?
+  erfuelltAm      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kundeId])
+  @@map("stripe_bestellungen")
+}
+
+// ============================================================
+// Freikurs-Codes (Willkommenscode): ein Kurs kostenlos
+// ============================================================
+
+enum FreikursArt {
+  /// Bei der Erstregistrierung automatisch erzeugt
+  AUTO
+  /// Von Hand im Admin-Bereich erzeugt
+  MANUELL
+}
+
+enum FreikursStatus {
+  OFFEN
+  EINGELOEST
+  GESPERRT
+}
+
+/// Code fuer genau eine kostenlose Einzelstunde (Reformer-Kurse). Wird im
+/// Bezahlschritt wie ein Gutschein eingegeben. Storniert die Kundin rechtzeitig,
+/// wird der Code wieder gueltig.
+model Freikurs {
+  id         String         @id @default(cuid())
+  code       String         @unique
+  art        FreikursArt
+  status     FreikursStatus @default(OFFEN)
+  gueltigBis DateTime
+
+  /// Kundin, fuer die der Code bei der Registrierung erzeugt wurde
+  kundeId String?
+  /// Empfaenger bei einem von Hand erzeugten Code, falls verschickt
+  email   String?
+  notiz   String?
+
+  /// Normalisierte Handynummer der Kundin (nur bei automatischen Codes). Eindeutig:
+  /// pro Handynummer gibt es hoechstens einen automatischen Willkommenscode.
+  telefonNorm String? @unique
+
+  eingeloestAm DateTime?
+  /// Buchung, die den Code verbraucht hat
+  buchungId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buchungId])
+  @@map("freikurse")
 }

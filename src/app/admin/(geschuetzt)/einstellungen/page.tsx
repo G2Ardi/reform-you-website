@@ -43,6 +43,30 @@ export default async function AdminEinstellungenPage() {
                 required
               />
             </div>
+            <div className="form-row-inline">
+              <input
+                id="willkommenscodeAktiv"
+                name="willkommenscodeAktiv"
+                type="checkbox"
+                defaultChecked={einstellungen.willkommenscodeAktiv}
+              />
+              <label htmlFor="willkommenscodeAktiv">
+                Willkommenscode bei der Erstregistrierung automatisch erzeugen und per Mail verschicken
+              </label>
+            </div>
+            <div className="form-row">
+              <label htmlFor="willkommenscodeMonate">Gültigkeit des Willkommenscodes, in Monaten</label>
+              <input
+                className="input"
+                id="willkommenscodeMonate"
+                name="willkommenscodeMonate"
+                type="number"
+                min={1}
+                max={36}
+                defaultValue={einstellungen.willkommenscodeMonate}
+                required
+              />
+            </div>
           </ActionForm>
         </div>
       </div>

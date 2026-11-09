@@ -32,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {istAdmin ? <Link href="/admin/einstellungen">Einstellungen</Link> : null}
             {istAdmin ? <Link href="/admin/erinnerungen">Versand</Link> : null}
             {istAdmin ? <Link href="/admin/kulanz">Kulanz</Link> : null}
+            {istAdmin ? <Link href="/admin/codes">Codes</Link> : null}
             {inhaber ? <Link href="/admin/umsatz">Umsatz</Link> : null}
             {inhaber ? <Link href="/admin/mitarbeiter">Mitarbeiter</Link> : null}
             <span className="small muted admin-nutzer">{mitarbeiter.name}</span>

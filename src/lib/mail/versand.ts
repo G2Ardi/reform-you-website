@@ -142,6 +142,8 @@ export async function sendeStornoBestaetigung(
   } else if (!ergebnis.gutschrift) {
     gutschriftText =
       "Die Stornierung erfolgte nach Ablauf der Stornofrist. Es gibt dafür keine Gutschrift, der Platz wird für die Warteliste frei.";
+  } else if (b.gratis) {
+    gutschriftText = "Ihr Willkommenscode ist wieder gültig. Sie können ihn für eine andere Einzelstunde in einem Reformer-Kurs verwenden.";
   } else if (b.zahlungsart === "KARTE") {
     gutschriftText = b.karte
       ? `Der Credit wurde Ihnen wieder gutgeschrieben, die Credits sind weiter gültig bis ${formatDatumKurz(b.karte.gueltigBis)}.`
@@ -266,5 +268,47 @@ export async function sendeGutscheinCode(g: Gutschein): Promise<void> {
     ]
       .filter((z, i, arr) => z !== "" || arr[i - 1] !== "")
       .join("\n"),
+  });
+}
+
+/** Allgemeine interne Nachricht ans Studio, zum Beispiel bei Problemen mit einer Zahlung. */
+export async function sendeStudioHinweis(betreff: string, zeilen: string[]): Promise<void> {
+  await sendeMail({ an: studioAdresse(), betreff, text: zeilen.join("\n") });
+}
+
+/** Die Zahlung ging ein, der Kauf liess sich aber nicht ausfuehren, der Betrag wird erstattet. */
+export async function sendeBestellungErstattet(an: string, name: string, grund: string, erstattet: boolean): Promise<void> {
+  await sendeMail({
+    an,
+    betreff: "Ihre Bestellung bei Reform You konnte nicht ausgeführt werden",
+    text: [
+      `Guten Tag ${name},`,
+      "",
+      `leider konnte Ihre Bestellung nicht ausgeführt werden: ${grund}`,
+      erstattet
+        ? "Der bezahlte Betrag wurde Ihnen erstattet. Er erscheint je nach Zahlart in einigen Tagen auf Ihrem Konto."
+        : "Wir erstatten den bezahlten Betrag in Kürze von Hand und melden uns bei Ihnen.",
+      "",
+      ...GRUSS,
+    ].join("\n"),
+  });
+}
+
+export async function sendeWillkommenscode(an: string, name: string | null, code: string, gueltigBis: Date): Promise<void> {
+  await sendeMail({
+    an,
+    betreff: "Ihr Willkommensgeschenk von Reform You: ein Kurs gratis",
+    text: [
+      name ? `Guten Tag ${name},` : "Guten Tag,",
+      "",
+      "willkommen bei Reform You. Zum Start schenken wir Ihnen eine Einzelstunde in einem Reformer-Kurs.",
+      "",
+      `Ihr Code: ${code}`,
+      `Gültig bis ${formatDatumKurz(gueltigBis)}, an beiden Standorten, einmal einlösbar.`,
+      "",
+      `So lösen Sie ihn ein: Auf der Website einen Kurs wählen, "Einzelstunde" auswählen und im Bezahlschritt den Code eingeben. Der Betrag sinkt auf null.`,
+      "",
+      ...GRUSS,
+    ].join("\n"),
   });
 }
