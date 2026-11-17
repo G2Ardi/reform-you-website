@@ -49,7 +49,6 @@ export default async function StudioPage({
                 <div className="stack-3">
                   <p className="tag">Kursleitung</p>
                   <h2 className="t-2">{studioContent.janinaName.toLowerCase()}</h2>
-                  <p>{studioContent.janinaText}</p>
                   <p>
                     <strong>{studioContent.janinaBio.gruss}</strong>
                     <br />

@@ -374,8 +374,6 @@ export const studioContent = {
   lede:
     "Kleine Gruppen, persönliche Begleitung und eine Atmosphäre, in der du dich wohlfühlen kannst. Auf sechs Reformern nehmen wir uns Zeit für bewusste Bewegung, neue Stärke und dich ganz in deinem Tempo.",
   janinaName: "Janina Conrady",
-  janinaText:
-    "Reform You wird von Janina Conrady geführt. Sie unterrichtet die Kurse selbst, stellt die Geräte ein und kennt nach dem zweiten Termin deinen Namen.",
   janinaBio: {
     gruss: "Hi, ich bin Janina!",
     rolle: "Inhaberin von Reform You, Pilates Trainerin und Mama von zwei Töchtern",
