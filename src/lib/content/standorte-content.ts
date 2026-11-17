@@ -114,14 +114,14 @@ const reformerKurse: KursContent[] = [
     name: "Reformer Basics",
     dauerMinuten: 50,
     beschreibung:
-      "Der Einstieg an den Reformer: wie die Federn eingestellt werden, wie Atmung und Bewegung zusammenspielen, wie eine Übung sauber aussieht. Die Spannung bleibt niedrig, das Tempo ruhig. Ohne Vorerfahrung empfiehlt Janina, hier zu starten.",
+      "Lerne die Grundlagen, bewusste Atmung und kontrollierte Bewegung auf dem Reformer kennen. Für mehr Verbindung zwischen Körper und Kopf.",
     skalaArt: "POSITION",
     skalaPosition: 22,
     skalaLabel: "einstieg",
     hinweis: "kein Vorwissen nötig",
     offenerHinweis: "Dauer (50 Minuten) von Janina noch zu bestätigen",
     reihenfolge: 0,
-    preisEinzelCent: 2500,
+    preisEinzelCent: 2600,
     karteGueltig: true,
     karteGueltigOffen: false,
     kapazitaetStandard: 6,
@@ -132,14 +132,14 @@ const reformerKurse: KursContent[] = [
     name: "Reformer Flow",
     dauerMinuten: 50,
     beschreibung:
-      "Für alle mit Reformer-Erfahrung: anspruchsvollere Übungen, fließende Übergänge, höhere Federspannung. Sinnvoll, wenn du die Grundlagen kennst und den Ablauf nicht mehr mitlesen musst.",
+      "Baue auf deinen Grundlagen auf. Mehr Intensität, fließende Bewegungen und neue Herausforderungen. Für mehr Kraft, Balance und Kontrolle.",
     skalaArt: "POSITION",
     skalaPosition: 68,
     skalaLabel: "fortgeschritten",
     hinweis: "Grundlagen vorausgesetzt",
     offenerHinweis: "Dauer (50 Minuten) von Janina noch zu bestätigen",
     reihenfolge: 1,
-    preisEinzelCent: 2500,
+    preisEinzelCent: 2600,
     karteGueltig: true,
     karteGueltigOffen: false,
     kapazitaetStandard: 6,
@@ -150,14 +150,32 @@ const reformerKurse: KursContent[] = [
     name: "Reformer Cardio, Jumpboard",
     dauerMinuten: 50,
     beschreibung:
-      "Dynamisches Sprungtraining mit dem Jumpboard am Reformer. Kraft, Ausdauer und Koordination in einem Format, höchste Stufe auf der Federskala.",
+      "Mehr Schwung in dein Training. Dynamische Sprünge mit dem Jumpboard verbinden Pilates mit Ausdauer. Für mehr Kraft, Koordination und neue Energie.",
     skalaArt: "POSITION",
     skalaPosition: 92,
     skalaLabel: "intensiv",
     hinweis: "Grundlagen vorausgesetzt",
     offenerHinweis: "Dauer (50 Minuten) von Janina noch zu bestätigen",
     reihenfolge: 2,
-    preisEinzelCent: 2500,
+    preisEinzelCent: 2600,
+    karteGueltig: true,
+    karteGueltigOffen: false,
+    kapazitaetStandard: 6,
+    kapazitaetOffen: false,
+  },
+  {
+    slug: "reformer-deep-stretch",
+    name: "Reformer Deep Stretch",
+    dauerMinuten: 50,
+    beschreibung:
+      "Dehnung deines ganzen Körpers mit Unterstützung des Reformers. Sanfte Bewegungen und bewusste Atmung schenken dir Zeit zum Loslassen und Durchatmen.",
+    skalaArt: "POSITION",
+    skalaPosition: 35,
+    skalaLabel: "dehnung",
+    hinweis: null,
+    offenerHinweis: "Dauer (50 Minuten) von Janina noch zu bestätigen",
+    reihenfolge: 3,
+    preisEinzelCent: 2600,
     karteGueltig: true,
     karteGueltigOffen: false,
     kapazitaetStandard: 6,
@@ -175,7 +193,7 @@ const reformerKurse: KursContent[] = [
     hinweis: "Baby oder Kleinkind dabei",
     offenerHinweis:
       "Kapazität (6 Plätze) ist ein Platzhalter, von Janina nicht bestätigt. Ob die Guthabenkarten hier gelten, ist ebenfalls offen, siehe Hinweis bei den Karten.",
-    reihenfolge: 3,
+    reihenfolge: 4,
     preisEinzelCent: 2000,
     karteGueltig: false,
     karteGueltigOffen: false,
@@ -205,8 +223,8 @@ const wassenbergAbos: AboModellContent[] = [];
 const wassenbergPreise: PreisContent[] = [
   {
     typ: "EINZELSTUNDE",
-    bezeichnung: "Reformer Basics, Reformer Flow, Reformer Cardio (Jumpboard)",
-    betragCent: 2500,
+    bezeichnung: "Reformer Basics, Reformer Flow, Reformer Cardio (Jumpboard), Reformer Deep Stretch",
+    betragCent: 2600,
     einheit: "pro Einzelstunde",
     hinweis: null,
     offen: false,
@@ -222,19 +240,19 @@ const wassenbergPreise: PreisContent[] = [
   {
     typ: "KARTE",
     bezeichnung: "5 Credits",
-    betragCent: 12000,
+    betragCent: 12500,
     einheit: "3 Monate gültig",
     hinweis:
-      "Gilt für die drei Reformer-Kurse, an beiden Standorten einlösbar. Pilates x Mommy & Mini ist nur als Einzelstunde buchbar.",
+      "Gilt für die vier Reformer-Kurse, an beiden Standorten einlösbar. Pilates x Mommy & Mini ist nur als Einzelstunde buchbar.",
     offen: false,
   },
   {
     typ: "KARTE",
     bezeichnung: "10 Credits",
-    betragCent: 22000,
+    betragCent: 23000,
     einheit: "6 Monate gültig",
     hinweis:
-      "Gilt für die drei Reformer-Kurse, an beiden Standorten einlösbar. Pilates x Mommy & Mini ist nur als Einzelstunde buchbar.",
+      "Gilt für die vier Reformer-Kurse, an beiden Standorten einlösbar. Pilates x Mommy & Mini ist nur als Einzelstunde buchbar.",
     offen: false,
   },
   {
@@ -352,33 +370,49 @@ export function findStandortContent(slug: string): StandortContent | undefined {
 /** Studio-Inhalt, standortunabhaengig: die Marke und Janina sind an
  * beiden Standorten gleich, nur die Adressdaten unterscheiden sich. */
 export const studioContent = {
-  ueberschrift: "ein raum, kein fitnessclub",
+  ueberschrift: "Persönlich. Achtsam. Gemeinsam",
   lede:
-    "Reform You ist klein, ruhig, überschaubar. Genau das ist der Punkt.",
+    "Kleine Gruppen, persönliche Begleitung und eine Atmosphäre, in der du dich wohlfühlen kannst. Auf sechs Reformern nehmen wir uns Zeit für bewusste Bewegung, neue Stärke und dich ganz in deinem Tempo.",
   janinaName: "Janina Conrady",
   janinaText:
     "Reform You wird von Janina Conrady geführt. Sie unterrichtet die Kurse selbst, stellt die Geräte ein und kennt nach dem zweiten Termin deinen Namen.",
-  janinaBioOffen:
-    "Text von Janina einsetzen: Ausbildung, Zertifizierungen, seit wann sie unterrichtet, warum sie das Studio eröffnet hat, was ihr im Unterricht wichtig ist.",
+  janinaBio: {
+    gruss: "Hi, ich bin Janina!",
+    rolle: "Inhaberin von Reform You, Pilates Trainerin und Mama von zwei Töchtern",
+    absaetze: [
+      "Sport und Bewegung waren schon immer ein großer Teil meines Lebens. Während der Schwangerschaft mit meiner zweiten Tochter habe ich meine Ausbildung zur Pilates Trainerin begonnen und anschließend erfolgreich abgeschlossen.",
+      "Pilates bedeutet für mich mehr als Training: Es verbindet Kraft, Kontrolle und Leichtigkeit und schafft ein ganz neues Körpergefühl. Genau diese Begeisterung möchte ich in jeder Stunde an dich weitergeben.",
+    ],
+    schluss: "Ich freue mich dich kennenzulernen!",
+  },
   merkmale: [
     {
-      label: "die gruppe",
-      text: "Am Reformer ist die Gruppengröße durch die Anzahl der Geräte begrenzt. Du wirst gesehen und korrigiert, statt in einer Reihe mitzulaufen.",
-      offenerHinweis: "Anzahl Plätze pro Standort eintragen",
+      label: "Kleine Gruppen",
+      text: "Sechs Reformer, maximal sechs Teilnehmende. So bleibt Raum, auf dich einzugehen und dich bei jeder Bewegung aufmerksam zu begleiten.",
     },
     {
-      label: "das gerät",
-      text: "Federspannung, Kopfstütze, Fußbrett: der Reformer wird vor jeder Einheit auf deinen Körper eingestellt. Deshalb funktioniert das Training auch nach einer Verletzung oder einer Schwangerschaft.",
-      offenerHinweis: null,
+      label: "Persönliche Begleitung",
+      text: "Wir lernen dich und deine Ziele kennen. Mit individuellen Tipps und passenden Anpassungen unterstützen wir dich dabei, in deinem Tempo Fortschritte zu machen.",
     },
     {
-      label: "das baby",
-      text: "Im Kurs Pilates x Mommy & Mini ist das Kind kein Störfaktor, sondern Teil des Termins. Kein Organisieren von Betreuung, kein schlechtes Gewissen.",
-      offenerHinweis: null,
+      label: "Wohlfühlatmosphäre",
+      text: "Warme Farben, eine ruhige Umgebung und ein herzliches Miteinander. Ein Ort, an dem du ankommen, durchatmen und dir Zeit für dich nehmen kannst.",
     },
   ],
+  communityUeberschrift: "Zusammen bewegen. Verbunden bleiben.",
   communityText:
-    "Es gibt eine Gruppe, in der Termine, Fragen und Neuigkeiten geteilt werden. Teilnahme ist freiwillig und kostet nichts.",
+    "Auch abseits der Kurse bleiben wir in Verbindung. In unserer Community Gruppe findest du Neuigkeiten, kommende Events und Platz für Austausch. Sei dabei, wenn du magst kostenlos und ganz unverbindlich.",
+  abschlussUeberschrift: "Deine Zeit für dich beginnt hier.",
+  abschlussText:
+    "Lerne unser Studio kennen und entdecke, wie gut sich bewusste Bewegung anfühlen kann. Buche deinen ersten Reformer Basics Kurs. Wir freuen uns auf dich.",
+};
+
+/** Titel und Zusatz der Kurse auf der Startseite, nach Janinas Text. */
+export const kursKurzinfo: Record<string, { titel: string; zusatz: string | null }> = {
+  "reformer-basics": { titel: "Reformer Basics", zusatz: "Einstieg" },
+  "reformer-flow": { titel: "Reformer Flow", zusatz: "Fortgeschritten" },
+  "reformer-cardio": { titel: "Reformer Cardio", zusatz: "Jumpboard" },
+  "reformer-deep-stretch": { titel: "Reformer Deep Stretch", zusatz: null },
 };
 
 export const unternehmen = {

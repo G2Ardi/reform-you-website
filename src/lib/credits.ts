@@ -14,8 +14,8 @@ export const CREDITS_KATALOG: Record<
   KaufbareCredits,
   { label: string; einheiten: number; preisCent: number; laufzeitMonate: number }
 > = {
-  FUENFER: { label: "5 Credits", einheiten: 5, preisCent: 12000, laufzeitMonate: 3 },
-  ZEHNER: { label: "10 Credits", einheiten: 10, preisCent: 22000, laufzeitMonate: 6 },
+  FUENFER: { label: "5 Credits", einheiten: 5, preisCent: 12500, laufzeitMonate: 3 },
+  ZEHNER: { label: "10 Credits", einheiten: 10, preisCent: 23000, laufzeitMonate: 6 },
 };
 
 /** Laufzeit von Guthaben, das aus einer stornierten Einzelbuchung entsteht. */

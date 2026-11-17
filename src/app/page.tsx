@@ -19,7 +19,7 @@ export default async function StandortauswahlPage() {
         <div className="shell">
           <div className="picker-intro">
             <p className="tag">Reform You Pilates Studio</p>
-            <h1 className="t-2">wo möchtest du trainieren?</h1>
+            <h1 className="t-2">Welcher Standort?</h1>
           </div>
           <StandortPicker
             standorte={standorte.map((s) => ({

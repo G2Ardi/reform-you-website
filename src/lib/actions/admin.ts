@@ -22,6 +22,7 @@ import { erstelleKulanzGuthaben, kaufeKarte } from "@/lib/repositories/karten";
 import { findeKundeNachEmail } from "@/lib/repositories/kunden";
 import { versendeFaelligeGutscheine } from "@/lib/repositories/gutscheine";
 import { FreikursFehler, erstelleManuellenCode, sperreFreikurs } from "@/lib/repositories/freikurse";
+import { TerminFehler, aktualisiereTermin, erstelleTermine, loescheTermin } from "@/lib/repositories/termin-verwaltung";
 import {
   MitarbeiterFehler,
   aktualisiereMitarbeiter,
@@ -237,4 +238,65 @@ export async function freikursSperrenAction(freikursId: string): Promise<AdminEr
   }
   revalidatePath("/admin/codes");
   return { erfolg: "Gesperrt." };
+}
+
+export async function termineAnlegenAction(
+  _vorher: AdminErgebnis | null,
+  formData: FormData,
+): Promise<AdminErgebnis | null> {
+  await erzwingeAdmin();
+  const text = (name: string) => String(formData.get(name) ?? "");
+  try {
+    const { angelegt, uebersprungen } = await erstelleTermine({
+      kursId: text("kursId"),
+      datum: text("datum"),
+      zeit: text("zeit"),
+      plaetze: text("plaetze"),
+      dauerMinuten: text("dauerMinuten"),
+      trainerName: text("trainerName"),
+      wiederholenBis: text("wiederholenBis"),
+    });
+    revalidatePath("/admin");
+    revalidatePath("/", "layout");
+    const teile = [`${angelegt} ${angelegt === 1 ? "Termin" : "Termine"} angelegt`];
+    if (uebersprungen > 0) teile.push(`${uebersprungen} übersprungen, weil es sie schon gab`);
+    return { erfolg: `${teile.join(", ")}.` };
+  } catch (fehler) {
+    return { fehler: fehler instanceof TerminFehler ? fehler.message : "Die Termine konnten nicht angelegt werden." };
+  }
+}
+
+export async function terminAendernAction(
+  terminId: string,
+  _vorher: AdminErgebnis | null,
+  formData: FormData,
+): Promise<AdminErgebnis | null> {
+  await erzwingeAdmin();
+  const text = (name: string) => String(formData.get(name) ?? "");
+  try {
+    await aktualisiereTermin(terminId, {
+      plaetze: text("plaetze"),
+      trainerName: text("trainerName"),
+      datum: text("datum"),
+      zeit: text("zeit"),
+    });
+    revalidatePath("/admin");
+    revalidatePath(`/admin/termine/${terminId}`);
+    revalidatePath("/", "layout");
+    return { erfolg: "Gespeichert." };
+  } catch (fehler) {
+    return { fehler: fehler instanceof TerminFehler ? fehler.message : "Speichern fehlgeschlagen." };
+  }
+}
+
+export async function terminLoeschenAction(terminId: string): Promise<AdminErgebnis> {
+  await erzwingeAdmin();
+  try {
+    await loescheTermin(terminId);
+  } catch (fehler) {
+    return { fehler: fehler instanceof TerminFehler ? fehler.message : "Löschen fehlgeschlagen." };
+  }
+  revalidatePath("/admin");
+  revalidatePath("/", "layout");
+  redirect("/admin");
 }

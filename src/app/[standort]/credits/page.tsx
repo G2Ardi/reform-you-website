@@ -126,19 +126,14 @@ export default async function CreditsPage({
             <Reveal>
               <p className="tag">Stornieren und verschieben</p>
             </Reveal>
-            <ul className="list" style={{ marginTop: "var(--s3)" }}>
-              <li>
-                Bis 24 Stunden vor Kursbeginn bekommst du deinen Credit zurück. Hast du eine Einzelstunde bezahlt, gibt
-                es 1 Credit als Guthaben, kein Geld.
-              </li>
-              <li>
-                Danach kannst du weiter stornieren, aber ohne Gutschrift. So wird der Platz für die Warteliste frei.
-              </li>
-              <li>
-                Verschieben geht bis 24 Stunden vor Kursbeginn. Danach heißt es stornieren und neu buchen, der neue Kurs
-                kostet wieder 1 Credit.
-              </li>
-            </ul>
+            <div className="stack-3" style={{ marginTop: "var(--s3)" }}>
+              <p className="lede">Wenn sich deine Pläne ändern:</p>
+              <p>
+                Bis 24 Stunden vor Kursbeginn kannst du deine Buchung stornieren und erhältst deinen Credit zurück. Bei
+                einer bezahlten Einzelstunde schreiben wir dir stattdessen 1 Credit für deinen nächsten Besuch gut. Eine
+                Auszahlung ist nicht möglich.
+              </p>
+            </div>
           </div>
         </section>
 

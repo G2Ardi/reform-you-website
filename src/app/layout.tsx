@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s – Reform You Pilates Studio",
   },
   description:
-    "Reformer Pilates in kleinen Gruppen. Fünf Formate von sanft bis intensiv, Standorte Wassenberg und Wegberg.",
+    "Reformer Pilates in kleinen Gruppen. Standorte Wassenberg und Wegberg.",
 };
 
 /**

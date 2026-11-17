@@ -36,12 +36,15 @@ export default async function GutscheinPage({
               <div className="split split-heavy-left">
                 <div className="stack-3">
                   <p className="tag">Gutschein</p>
-                  <h1 className="t-1">gutschein verschenken</h1>
+                  <h1 className="t-1">Zeit für den Körper verschenken</h1>
                 </div>
-                <p className="lede">
-                  Wähle einen Betrag und das Lieferdatum. Der Code geht per E-Mail an die Beschenkte und lässt sich im
-                  Bezahlschritt für Einzelstunden und Credits einlösen, an beiden Standorten. Gültig {GUTSCHEIN_GUELTIGKEIT_JAHRE} Jahre ab Kauf.
-                </p>
+                <div className="stack-3">
+                  <p className="lede">Was gibt es Schöneres, als Zeit für sich zu verschenken?</p>
+                  <p className="lede">
+                    Mit einem Gutschein von Reform You verschenkst du Bewegung, neue Energie und eine kleine Auszeit vom
+                    Alltag. Für einen lieben Menschen, der sich und seinem Körper etwas Gutes tun darf.
+                  </p>
+                </div>
               </div>
             </Reveal>
           </div>
@@ -59,7 +62,7 @@ export default async function GutscheinPage({
               heute={heute}
             />
             <p className="small muted" style={{ marginTop: "var(--s3)" }}>
-              Mit der Bestellung stimmst du den AGB zu. Ein Gutschein wird nicht in Geld erstattet.
+              Gültig {GUTSCHEIN_GUELTIGKEIT_JAHRE} Jahre ab Kauf, einlösbar an beiden Standorten im Bezahlschritt für Einzelstunden und Credits. Mit der Bestellung stimmst du den AGB zu. Ein Gutschein wird nicht in Geld erstattet.
             </p>
           </div>
         </section>

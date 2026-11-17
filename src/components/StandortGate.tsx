@@ -60,7 +60,7 @@ export default function StandortGate({ standorte }: { standorte: GateStandort[] 
           className="gate-logo"
         />
         <h2 id="gate-titel" className="t-2 gate-titel">
-          wo möchtest du trainieren?
+          Welcher Standort?
         </h2>
         <div ref={ersterLink}>
           <StandortPicker standorte={standorte} onWaehle={waehle} />

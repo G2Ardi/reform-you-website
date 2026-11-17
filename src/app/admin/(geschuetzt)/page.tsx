@@ -24,8 +24,17 @@ export default async function AdminUebersichtPage() {
           </Link>
         ) : null}
 
-        <h1 className="t-2">kommende termine</h1>
-        <p className="small muted">Überblick über Teilnehmerzahl pro Termin, beide Standorte.</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--s3)", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h1 className="t-2">kommende termine</h1>
+            <p className="small muted">Überblick über Teilnehmerzahl pro Termin, beide Standorte.</p>
+          </div>
+          {mitarbeiter?.rolle === "ADMIN" ? (
+            <Link className="btn" href="/admin/termine/neu">
+              Termin anlegen
+            </Link>
+          ) : null}
+        </div>
         <div style={{ marginTop: "var(--s4)", overflowX: "auto" }}>
           <table className="table">
             <thead>

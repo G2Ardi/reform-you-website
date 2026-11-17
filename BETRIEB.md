@@ -48,16 +48,21 @@ curl http://127.0.0.1:3000/api/health
 
 Alle Container laufen (`migrate` ist beendet, das ist richtig), die Health-Adresse antwortet mit `{"status":"ok"}`. Sie antwortet nur dann mit 200, wenn die Datenbank erreichbar ist.
 
-## Kurstermine (wichtig)
+## Kurstermine
 
-Die Website zeigt Termine, die in der Datenbank stehen. Eine Terminverwaltung im Admin-Bereich gibt es noch nicht. Bis dahin entstehen die Termine aus einem Wochenplan in `prisma/termine.ts`. Dieser Plan ist **ein Platzhalter**, nicht Janinas echter Stundenplan. Vor dem Livegang den echten Wochenplan dort eintragen (Wochentag, Uhrzeit, Kurs), neu bauen und Termine erzeugen:
+Die Website zeigt die Termine, die in der Datenbank stehen. Janina legt sie im Admin-Bereich selbst an: `Termine > Termin anlegen` (Standort, Kurs, Datum, Uhrzeit, Plätze, Trainerin, optional jede Woche wiederholen bis zu einem Datum). Uhrzeiten gelten in deutscher Zeit, auch über die Zeitumstellung hinweg. Auf der Detailseite eines Termins lassen sich Plätze und Trainerin ändern, Datum und Uhrzeit nur ohne Buchungen, und der Termin lässt sich löschen, solange niemand gebucht ist. Sonst gilt "Kurs ausfallen lassen".
+
+Der Befehl `npm run db:termine` mit dem Platzhalter-Wochenplan in `prisma/termine.ts` ist nur für Tests gedacht und wird im Betrieb nicht gebraucht:
 
 ```
-docker compose build migrate
-docker compose run --rm migrate npm run db:termine -- 56
+docker compose run --rm migrate npm run db:termine -- 28
 ```
 
-Die Zahl ist die Anzahl der Tage im Voraus. Vorhandene Termine werden übersprungen, der Befehl kann beliebig oft laufen. Er muss regelmäßig wiederholt werden, sonst gehen der Website die Termine aus. Eine Terminverwaltung im Admin ist der sinnvolle nächste Ausbau.
+Ändern sich Kurstexte, Kurspreise oder die Preisliste in `src/lib/content/standorte-content.ts`, übernimmt der Seed das nicht in eine bestehende Datenbank. Dafür gibt es den Abgleich, der Kunden, Buchungen und Termine nicht anfasst:
+
+```
+docker compose run --rm migrate npm run db:inhalte
+```
 
 ## Erster Admin und Zugänge
 
@@ -163,7 +168,7 @@ Missbrauchsschutz: Pro Handynummer gibt es höchstens einen automatischen Code (
 
 ## Checkliste vor dem Livegang
 
-- [ ] Echter Wochenplan in `prisma/termine.ts`, Termine erzeugt
+- [ ] Janina hat die echten Kurstermine im Admin angelegt (Platzhalter-Termine aus dem Test gelöscht)
 - [ ] Erster Admin angelegt, Janina hat ein eigenes Passwort, `ADMIN_PASSWORT` geändert
 - [ ] SMTP eingetragen, Testmail kommt an
 - [ ] HTTPS, `NEXT_PUBLIC_BASE_URL` stimmt
@@ -175,7 +180,6 @@ Missbrauchsschutz: Pro Handynummer gibt es höchstens einen automatischen Code (
 
 ## Bekannte Lücken
 
-- **Terminverwaltung im Admin fehlt**, siehe oben.
 - **Kein Schutz gegen wiederholtes Raten von Passwörtern** bei den Logins. Empfehlung: Ratenbegrenzung am Reverse Proxy oder fail2ban.
 - **Ohne Datenbank zeigen die Seiten Beispieldaten**, statt einen Fehler zu melden. Deshalb die Überwachung auf `/api/health` legen, nicht auf die Startseite.
 - **Rechnungen als PDF, DATEV-Export und SMS bei Kursausfall** sind nicht gebaut. Stripe selbst ist angebunden und mit Test-Zahlungen geprüft.

@@ -3,12 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
 import HeroImage from "@/components/HeroImage";
-import FederSkala from "@/components/FederSkala";
 import FigurePlaceholder from "@/components/FigurePlaceholder";
 import Reveal from "@/components/Reveal";
 import Flag from "@/components/Flag";
 import { getStandortBySlug } from "@/lib/repositories/standorte";
 import { formatDatumLang } from "@/lib/format";
+import { kursKurzinfo } from "@/lib/content/standorte-content";
 
 export const dynamic = "force-dynamic";
 
@@ -77,10 +77,6 @@ export default async function StartPage({
                 <h1 className="t-1 hero-title" style={{ color: "inherit" }}>
                   fünfzig minuten, in denen dich niemand braucht.
                 </h1>
-                <p className="lede" style={{ maxWidth: "40ch" }}>
-                  Kleine Gruppen am Reformer. Das Gerät wird auf dich
-                  eingestellt, nicht du auf das Gerät.
-                </p>
               </div>
             </Reveal>
             {hatKurse ? (
@@ -124,20 +120,33 @@ export default async function StartPage({
                 <div className="split split-heavy-left">
                   <div className="stack-3">
                     <p className="tag">Kursangebot</p>
-                    <h2 className="t-2">fünf formate auf einer skala</h2>
+                    <h2 className="t-2">Kurse für jedes Level</h2>
                   </div>
                   <p className="lede">
-                    Am Reformer stellt die Federspannung ein, wie schwer eine
-                    Übung ist. Deshalb steht jedes Format hier an seiner
-                    Position, nicht in einer Reihe gleich aussehender
-                    Kacheln.
+                    Ob du gerade einsteigst, neue Herausforderungen suchst oder dir Zeit zum Dehnen nehmen möchtest:
+                    Unsere Kursformate holen dich dort ab, wo du stehst passend zu deinen Zielen.
                   </p>
                 </div>
               </Reveal>
-              <FederSkala
-                kurse={standort.kurse}
-                linkPrefix={`/${standort.slug}/kurse#`}
-              />
+              <div className="stack-5" style={{ marginTop: "var(--s5)" }}>
+                {standort.kurse
+                  .filter((k) => kursKurzinfo[k.slug])
+                  .map((k, i) => (
+                    <Reveal key={k.slug} delay={i * 0.04}>
+                      <article className="split" id={k.slug}>
+                        <div className="stack-3">
+                          <h3 className="t-3">{kursKurzinfo[k.slug].titel.toLowerCase()}</h3>
+                          {kursKurzinfo[k.slug].zusatz ? (
+                            <p className="tag" style={{ color: "var(--sepia)" }}>
+                              {kursKurzinfo[k.slug].zusatz}
+                            </p>
+                          ) : null}
+                        </div>
+                        <p>{k.beschreibung}</p>
+                      </article>
+                    </Reveal>
+                  ))}
+              </div>
               <p style={{ marginTop: "var(--s4)" }}>
                 <a className="go" href={`/${standort.slug}/kurse`}>
                   Alle Kurse und Termine
@@ -161,19 +170,16 @@ export default async function StartPage({
               <Reveal delay={0.08}>
                 <div className="stack-3">
                   <p className="tag">Am Gerät</p>
-                  <h2 className="t-2">widerstand, den du selbst bestimmst</h2>
+                  <h2 className="t-2">Ein Gerät. Viele Möglichkeiten. Reformer.</h2>
                   <p>
-                    Der Reformer ist ein Wagen auf Schienen. Sein Widerstand
-                    kommt aus Federn, die vor jeder Übung neu eingestellt
-                    werden. Genau darin liegt der Unterschied zum klassischen
-                    Krafttraining: du arbeitest gegen einen Widerstand, der zu
-                    dir passt, nicht gegen ein festes Gewicht.
+                    Der Reformer ist ein Pilatesgerät mit einer beweglichen Liegefläche, Federn und Seilzügen. Je nach
+                    Übung unterstützen dich die Federn in deiner Bewegung oder geben dir einen gezielten Widerstand.
+                    Gemeinsam passen wir die Einstellungen an dich und dein Trainingslevel an.
                   </p>
                   <p>
-                    Weil die Bewegung fließend bleibt, arbeitet die
-                    Tiefenmuskulatur mit. Das Training funktioniert auch nach
-                    einer Verletzung oder einer Schwangerschaft, weil sich das
-                    Gerät anpassen lässt und nicht du.
+                    Ob im Liegen, Sitzen oder Stehen: Mit kontrollierten, fließenden Bewegungen trainierst du Kraft,
+                    Beweglichkeit und Balance. Deine Atmung und eine bewusste Körperhaltung begleiten dabei jede
+                    Übung.
                   </p>
                 </div>
               </Reveal>
@@ -193,30 +199,28 @@ export default async function StartPage({
               <div className="when" style={{ marginTop: "var(--s5)" }}>
                 <Reveal>
                   <div className="when-item">
-                    <span className="when-time">vorher</span>
+                    <span className="when-time">Vor deinem Besuch</span>
                     <p>
-                      Kurs online buchen. Ohne Vorführung, ohne
-                      Beratungsgespräch. Für den Einstieg passt Reformer
-                      Basics, mit Baby oder Kleinkind Pilates x Mommy &amp; Mini.
+                      Suche dir auf unserer Website den passenden Kurs aus, registriere dich und buche deinen Platz. Für
+                      deinen Einstieg empfehlen wir Reformer Basics.
                     </p>
                   </div>
                 </Reveal>
                 <Reveal delay={0.06}>
                   <div className="when-item">
-                    <span className="when-time">zehn minuten früher</span>
+                    <span className="when-time">Ankommen &amp; kennenlernen</span>
                     <p>
-                      Bequeme Kleidung, Stoppersocken. Die zehn Minuten gehen
-                      dafür drauf, den Reformer auf deine Körpergröße
-                      einzustellen.
+                      Komm bitte zehn Minuten früher und trage bequeme Kleidung. Stoppersocken sind Pflicht. Gemeinsam
+                      machen wir dich mit dem Reformer und der Pilates Atmung vertraut.
                     </p>
                   </div>
                 </Reveal>
                 <Reveal delay={0.12}>
                   <div className="when-item">
-                    <span className="when-time">nach fünfzig minuten</span>
+                    <span className="when-time">Nach 50 Minuten</span>
                     <p>
-                      Du weißt, wie das Gerät funktioniert, und ob der
-                      nächste Termin Anfänger oder Fortgeschritten heißt.
+                      Du hast den Reformer kennengelernt und erlebt, wie bewusste Bewegung und Atmung Körper und Geist
+                      verbinden. Mit diesen ersten Grundlagen kannst du in den nächsten Stunden weiter aufbauen.
                     </p>
                   </div>
                 </Reveal>

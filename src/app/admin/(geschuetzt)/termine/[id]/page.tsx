@@ -3,11 +3,15 @@ import { getTerminMitBuchungen } from "@/lib/repositories/kurstermine";
 import { getMitarbeiter } from "@/lib/auth/admin";
 import { formatDatumUhrzeit } from "@/lib/format";
 import ActionButton from "@/components/forms/ActionButton";
+import ActionForm from "@/components/forms/ActionForm";
+import { berlinTeile } from "@/lib/zeit";
 import {
   adminStornierenAction,
   anwesendMarkierenAction,
   kursAusfallenLassenAction,
   noShowMarkierenAction,
+  terminAendernAction,
+  terminLoeschenAction,
 } from "@/lib/actions/admin";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +59,44 @@ export default async function AdminTerminDetailPage({ params }: { params: Promis
               bestaetigung="Diesen Kurstermin wirklich ausfallen lassen? Alle gebuchten Teilnehmer erhalten automatisch eine Gutschrift und eine Mail."
               action={kursAusfallenLassenAction.bind(null, termin.id)}
             />
+          </div>
+        ) : null}
+
+        {istAdmin && termin.status === "AKTIV" ? (
+          <div style={{ marginTop: "var(--s4)", maxWidth: "36rem" }}>
+            <h2 className="t-3">termin bearbeiten</h2>
+            <div style={{ marginTop: "var(--s3)" }}>
+              <ActionForm action={terminAendernAction.bind(null, termin.id)} initialState={null} submitLabel="Speichern">
+                <div className="form-cols-2">
+                  <div className="form-row">
+                    <label htmlFor="e-datum">Datum</label>
+                    <input className="input" id="e-datum" name="datum" type="date" defaultValue={berlinTeile(termin.beginn).datum} required />
+                  </div>
+                  <div className="form-row">
+                    <label htmlFor="e-zeit">Uhrzeit, Beginn</label>
+                    <input className="input" id="e-zeit" name="zeit" type="time" step={300} defaultValue={berlinTeile(termin.beginn).zeit} required />
+                  </div>
+                </div>
+                <div className="form-cols-2">
+                  <div className="form-row">
+                    <label htmlFor="e-plaetze">Plätze</label>
+                    <input className="input" id="e-plaetze" name="plaetze" type="number" min={1} max={30} defaultValue={termin.kapazitaet} required />
+                  </div>
+                  <div className="form-row">
+                    <label htmlFor="e-trainer">Trainerin</label>
+                    <input className="input" id="e-trainer" name="trainerName" defaultValue={termin.trainerName ?? ""} autoComplete="off" />
+                  </div>
+                </div>
+                <p className="small muted">Datum und Uhrzeit lassen sich nur ändern, solange niemand gebucht oder auf der Warteliste ist.</p>
+              </ActionForm>
+            </div>
+            <div style={{ marginTop: "var(--s3)" }}>
+              <ActionButton
+                label="Termin löschen"
+                bestaetigung="Diesen Termin wirklich löschen? Das geht nur, wenn niemand gebucht ist."
+                action={terminLoeschenAction.bind(null, termin.id)}
+              />
+            </div>
           </div>
         ) : null}
 

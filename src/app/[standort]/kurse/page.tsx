@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
-import FederSkala from "@/components/FederSkala";
 import FigurePlaceholder from "@/components/FigurePlaceholder";
 import Reveal from "@/components/Reveal";
 import Flag from "@/components/Flag";
@@ -35,9 +34,7 @@ export default async function KursePage({
                 </div>
                 {standort.kurse.length > 0 ? (
                   <p className="lede">
-                    Alle Kurse finden im Studio in {ort} statt. Die
-                    Federspannung zeigt, wie fordernd ein Format ist. Gebucht
-                    wird online.
+                    Alle Kurse finden im Studio in {ort} statt. Gebucht wird online.
                   </p>
                 ) : (
                   <p className="lede">
@@ -51,20 +48,6 @@ export default async function KursePage({
 
         {standort.kurse.length > 0 ? (
           <>
-            <section className="band band-tight band-sunk">
-              <div className="shell">
-                <FederSkala
-                  kurse={standort.kurse}
-                  linkPrefix={`/${standort.slug}/kurse#`}
-                  pinned
-                />
-                <p className="small muted" style={{ marginTop: "var(--s3)" }}>
-                  Die Einordnung leitet sich aus den Kursnamen ab.{" "}
-                  <Flag>Von Janina bestätigen lassen</Flag>
-                </p>
-              </div>
-            </section>
-
             <section className="band">
               <div className="shell stack-5">
                 {standort.kurse.map((kurs) => (
@@ -180,25 +163,28 @@ export default async function KursePage({
               <div className="split split-heavy-left">
                 <h2 className="t-2">
                   {standort.kurse.length > 0
-                    ? "sag, wo du stehst. wir sagen, welcher kurs passt."
+                    ? "Dein Tempo. Dein Flow. Dein Kurs."
                     : "lass dich informieren, sobald es losgeht."}
                 </h2>
                 <div className="stack-3">
                   {standort.kurse.length > 0 ? (
                     <>
-                      <p>
-                        Ein Anruf reicht. Danach weißt du, ob Anfänger,
-                        Fortgeschritten oder Matte der richtige Einstieg ist.
-                      </p>
+                      <p>Du bist unsicher welcher Kurs zu dir passt? Wir helfen dir, deinen Einstieg zu finden.</p>
                       <div className="btns">
                         {standort.telefon ? (
-                          <a className="btn" href={`tel:${standort.telefon.replace(/\s+/g, "")}`}>
-                            {standort.telefon}
+                          <>
+                            <a className="btn" href={`tel:${standort.telefon.replace(/\s+/g, "")}`}>
+                              Lass dich beraten
+                            </a>
+                            <a className="btn btn-line" href={`/${standort.slug}/kontakt`}>
+                              Kontakt
+                            </a>
+                          </>
+                        ) : (
+                          <a className="btn" href={`/${standort.slug}/kontakt`}>
+                            Lass dich beraten
                           </a>
-                        ) : null}
-                        <a className="btn btn-line" href={`/${standort.slug}/kontakt`}>
-                          Kontakt
-                        </a>
+                        )}
                       </div>
                     </>
                   ) : (
